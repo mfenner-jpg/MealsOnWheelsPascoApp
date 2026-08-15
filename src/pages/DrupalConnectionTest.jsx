@@ -1,165 +1,171 @@
-import { useState } from "react";
+export async function handler() {
+  const drupalFormUrl =
+    "https://www.mealsonwheelspasco.org/form/mow-app-connection-test";
 
-function DrupalConnectionTest() {
-  const [status, setStatus] = useState("Ready to test.");
-  const [details, setDetails] = useState("");
-  const [result, setResult] = useState(null);
-
-  const testDrupalConnection = async () => {
-    setStatus("Testing Netlify → Drupal connection...");
-    setDetails("");
-    setResult(null);
-
-    try {
-      const response = await fetch(
-        "/.netlify/functions/drupal-test",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      setResult(data);
-
-      if (response.ok && data.ok) {
-        setStatus(
-          "SUCCESS — server-side Drupal connection works"
-        );
-
-        setDetails(
-          "Netlify successfully reached the Drupal test Webform and found the required hidden Webform values plus the Name, Email, and Telephone fields."
-        );
-      } else {
-        setStatus("PARTIAL / BLOCKED");
-
-        setDetails(
-          data.message ||
-            `The Netlify function returned HTTP ${response.status}.`
-        );
-      }
-    } catch (error) {
-      setStatus("FAILED — test could not complete");
-      setDetails(error.message);
-    }
+  const testSubmission = {
+    name: "Netlify Test",
+    email: "mowapptest@example.com",
+    telephone: "813-555-0100",
   };
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "40px 24px",
-        background: "#f6f4ef",
-        fontFamily:
-          'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "520px",
-          margin: "0 auto",
-          background: "#ffffff",
-          padding: "28px",
-          borderRadius: "20px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
-        }}
-      >
-        <h1
-          style={{
-            marginTop: 0,
-            color: "#073665",
-            fontFamily: 'Georgia, "Times New Roman", serif',
-            fontSize: "28px",
-          }}
-        >
-          Drupal Connection Test
-        </h1>
+  try {
+    const getResponse = await fetch(drupalFormUrl, {
+      method: "GET",
+      headers: {
+        Accept: "text/html",
+        "User-Agent": "MOW-App-Drupal-Submission-Test/1.0",
+      },
+      redirect: "follow",
+    });
 
-        <p
-          style={{
-            lineHeight: 1.6,
-            color: "#444",
-          }}
-        >
-          This test uses a Netlify server-side function to read the
-          temporary MOW App Connection Test form. It does not submit or
-          change anything in Drupal.
-        </p>
+    const html = await getResponse.text();
 
-        <button
-          type="button"
-          onClick={testDrupalConnection}
-          style={{
-            width: "100%",
-            padding: "14px 18px",
-            marginTop: "12px",
-            border: "none",
-            borderRadius: "10px",
-            background: "#0b5a94",
-            color: "#ffffff",
-            fontSize: "16px",
-            fontWeight: "800",
-            cursor: "pointer",
-          }}
-        >
-          Test Netlify → Drupal
-        </button>
+    if (!getResponse.ok) {
+      return jsonResponse(502, {
+        ok: false,
+        stage: "load-form",
+        message: `Drupal returned HTTP ${getResponse.status} while loading the test form.`,
+      });
+    }
 
-        <div
-          style={{
-            marginTop: "24px",
-            padding: "18px",
-            borderRadius: "12px",
-            background: "#f2f5f8",
-          }}
-        >
-          <strong
-            style={{
-              display: "block",
-              color: "#073665",
-              marginBottom: "8px",
-            }}
-          >
-            {status}
-          </strong>
+    const getHiddenValue = (name) => {
+      const firstPattern = new RegExp(
+        `<input[^>]*name=["']${name}["'][^>]*value=["']([^"']*)["'][^>]*>`,
+        "i"
+      );
 
-          {details && (
-            <p
-              style={{
-                margin: 0,
-                lineHeight: 1.5,
-                color: "#444",
-              }}
-            >
-              {details}
-            </p>
-          )}
-        </div>
+      const secondPattern = new RegExp(
+        `<input[^>]*value=["']([^"']*)["'][^>]*name=["']${name}["'][^>]*>`,
+        "i"
+      );
 
-        {result && (
-          <pre
-            style={{
-              marginTop: "16px",
-              padding: "14px",
-              overflowX: "auto",
-              borderRadius: "10px",
-              background: "#042847",
-              color: "#ffffff",
-              fontSize: "12px",
-              lineHeight: 1.5,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
-            {JSON.stringify(result, null, 2)}
-          </pre>
-        )}
-      </div>
-    </div>
-  );
+      const match = html.match(firstPattern) || html.match(secondPattern);
+
+      return match ? match[1] : null;
+    };
+
+    const formBuildId = getHiddenValue("form_build_id");
+    const formToken = getHiddenValue("form_token");
+    const formId = getHiddenValue("form_id");
+
+    if (!formBuildId || !formId) {
+      return jsonResponse(422, {
+        ok: false,
+        stage: "read-form",
+        message:
+          "Drupal loaded, but the required form_build_id or form_id value was not found.",
+        hiddenFields: {
+          form_build_id: Boolean(formBuildId),
+          form_token: Boolean(formToken),
+          form_id: Boolean(formId),
+        },
+      });
+    }
+
+    const cookieHeader = getCookieHeader(getResponse.headers);
+
+    const formData = new URLSearchParams();
+
+    formData.set("name", testSubmission.name);
+    formData.set("email", testSubmission.email);
+    formData.set("telephone", testSubmission.telephone);
+    formData.set("form_build_id", formBuildId);
+    formData.set("form_id", formId);
+    formData.set("op", "Submit");
+
+    if (formToken) {
+      formData.set("form_token", formToken);
+    }
+
+    const postHeaders = {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "text/html",
+      "User-Agent": "MOW-App-Drupal-Submission-Test/1.0",
+      Referer: drupalFormUrl,
+    };
+
+    if (cookieHeader) {
+      postHeaders.Cookie = cookieHeader;
+    }
+
+    const postResponse = await fetch(drupalFormUrl, {
+      method: "POST",
+      headers: postHeaders,
+      body: formData.toString(),
+      redirect: "follow",
+    });
+
+    const resultHtml = await postResponse.text();
+
+    const looksLikeValidationError =
+      /form-item--error|messages--error|alert-danger|error-message/i.test(
+        resultHtml
+      );
+
+    const stillShowsBlankTestForm =
+      /name=["']name["'][^>]*value=["']["']/i.test(resultHtml) &&
+      /name=["']email["'][^>]*value=["']["']/i.test(resultHtml);
+
+    const likelyAccepted =
+      postResponse.ok &&
+      !looksLikeValidationError &&
+      !stillShowsBlankTestForm;
+
+    return jsonResponse(likelyAccepted ? 200 : 422, {
+      ok: likelyAccepted,
+      stage: "submit-test-webform",
+      drupalStatus: postResponse.status,
+      finalUrl: postResponse.url,
+      hiddenFields: {
+        form_build_id: true,
+        form_token: Boolean(formToken),
+        form_id: true,
+      },
+      submitted: testSubmission,
+      message: likelyAccepted
+        ? "TEST SUBMISSION SENT — check Drupal Results for the Netlify Test record."
+        : "Drupal received the POST, but the response did not clearly confirm a successful submission. Check Drupal Results before we change anything else.",
+    });
+  } catch (error) {
+    return jsonResponse(500, {
+      ok: false,
+      stage: "submit-test-webform",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
+    });
+  }
 }
 
-export default DrupalConnectionTest;
+function getCookieHeader(headers) {
+  if (typeof headers.getSetCookie === "function") {
+    const cookies = headers.getSetCookie();
+
+    if (cookies.length) {
+      return cookies
+        .map((cookie) => cookie.split(";")[0])
+        .filter(Boolean)
+        .join("; ");
+    }
+  }
+
+  const singleCookie = headers.get("set-cookie");
+
+  if (!singleCookie) {
+    return "";
+  }
+
+  return singleCookie.split(";")[0];
+}
+
+function jsonResponse(statusCode, data) {
+  return {
+    statusCode,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
+    body: JSON.stringify(data),
+  };
+}
