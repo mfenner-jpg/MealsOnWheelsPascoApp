@@ -3,47 +3,46 @@ import { useState } from "react";
 function DrupalConnectionTest() {
   const [status, setStatus] = useState("Ready to test.");
   const [details, setDetails] = useState("");
+  const [result, setResult] = useState(null);
 
   const testDrupalConnection = async () => {
-    setStatus("Testing connection...");
+    setStatus("Testing Netlify → Drupal connection...");
     setDetails("");
+    setResult(null);
 
     try {
       const response = await fetch(
-        "https://www.mealsonwheelspasco.org/form/mow-app-connection-test",
+        "/.netlify/functions/drupal-test",
         {
           method: "GET",
           headers: {
-            Accept: "text/html",
+            Accept: "application/json",
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error(
-          `Drupal responded with HTTP ${response.status} ${response.statusText}`
+      const data = await response.json();
+
+      setResult(data);
+
+      if (response.ok && data.ok) {
+        setStatus(
+          "SUCCESS — server-side Drupal connection works"
         );
-      }
 
-      const html = await response.text();
-
-      const hasFormBuildId = html.includes('name="form_build_id"');
-      const hasFormToken = html.includes('name="form_token"');
-      const hasFormId = html.includes('name="form_id"');
-
-      if (hasFormBuildId && hasFormToken && hasFormId) {
-        setStatus("SUCCESS — Drupal form reached");
         setDetails(
-          "The app successfully downloaded the Drupal Webform and found form_build_id, form_token, and form_id."
+          "Netlify successfully reached the Drupal test Webform and found the required hidden Webform values plus the Name, Email, and Telephone fields."
         );
       } else {
-        setStatus("PARTIAL SUCCESS — Drupal reached");
+        setStatus("PARTIAL / BLOCKED");
+
         setDetails(
-          "The app reached Drupal, but one or more required hidden form values were not found."
+          data.message ||
+            `The Netlify function returned HTTP ${response.status}.`
         );
       }
     } catch (error) {
-      setStatus("BLOCKED — connection failed");
+      setStatus("FAILED — test could not complete");
       setDetails(error.message);
     }
   };
@@ -54,12 +53,13 @@ function DrupalConnectionTest() {
         minHeight: "100vh",
         padding: "40px 24px",
         background: "#f6f4ef",
-        fontFamily: "Arial, sans-serif",
+        fontFamily:
+          'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       }}
     >
       <div
         style={{
-          maxWidth: "500px",
+          maxWidth: "520px",
           margin: "0 auto",
           background: "#ffffff",
           padding: "28px",
@@ -70,7 +70,8 @@ function DrupalConnectionTest() {
         <h1
           style={{
             marginTop: 0,
-            color: "#173b68",
+            color: "#073665",
+            fontFamily: 'Georgia, "Times New Roman", serif',
             fontSize: "28px",
           }}
         >
@@ -83,8 +84,9 @@ function DrupalConnectionTest() {
             color: "#444",
           }}
         >
-          This test only attempts to read the temporary MOW App Connection Test
-          form. It will not submit or change anything.
+          This test uses a Netlify server-side function to read the
+          temporary MOW App Connection Test form. It does not submit or
+          change anything in Drupal.
         </p>
 
         <button
@@ -96,14 +98,14 @@ function DrupalConnectionTest() {
             marginTop: "12px",
             border: "none",
             borderRadius: "10px",
-            background: "#1f5f9e",
+            background: "#0b5a94",
             color: "#ffffff",
             fontSize: "16px",
-            fontWeight: "700",
+            fontWeight: "800",
             cursor: "pointer",
           }}
         >
-          Test Drupal Connection
+          Test Netlify → Drupal
         </button>
 
         <div
@@ -117,7 +119,7 @@ function DrupalConnectionTest() {
           <strong
             style={{
               display: "block",
-              color: "#173b68",
+              color: "#073665",
               marginBottom: "8px",
             }}
           >
@@ -130,13 +132,31 @@ function DrupalConnectionTest() {
                 margin: 0,
                 lineHeight: 1.5,
                 color: "#444",
-                wordBreak: "break-word",
               }}
             >
               {details}
             </p>
           )}
         </div>
+
+        {result && (
+          <pre
+            style={{
+              marginTop: "16px",
+              padding: "14px",
+              overflowX: "auto",
+              borderRadius: "10px",
+              background: "#042847",
+              color: "#ffffff",
+              fontSize: "12px",
+              lineHeight: 1.5,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        )}
       </div>
     </div>
   );
