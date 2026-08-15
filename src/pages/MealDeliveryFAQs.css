@@ -1,0 +1,723 @@
+:root {
+  --mow-navy: #073665;
+  --mow-dark-navy: #042847;
+  --mow-blue: #0b5a94;
+  --mow-gold: #c58d00;
+  --mow-red: #cf2f2f;
+  --mow-cream: #f7f4ed;
+  --mow-soft-blue: #e7f1fa;
+  --mow-gold-soft: #f8ecd0;
+  --mow-text: #303840;
+  --mow-muted: #67717b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.meal-faq-page {
+  position: relative;
+  min-height: 100%;
+  overflow-x: hidden;
+  color: var(--mow-text);
+  background: linear-gradient(180deg, #f1eee7 0%, #f7f4ed 46%, #f5f2eb 100%);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.meal-faq-main {
+  min-height: 100%;
+  padding-bottom: 96px;
+}
+
+/* -------------------------------------------------
+   EXISTING APPROVED OPTION G HERO / FRAME
+-------------------------------------------------- */
+
+.meal-faq-overlay-header {
+  position: absolute;
+  z-index: 30;
+  top: env(safe-area-inset-top);
+  left: 0;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 18px 18px;
+}
+
+.meal-faq-back-button,
+.meal-faq-menu-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  background: rgba(3, 30, 52, 0.68);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(7px);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.meal-faq-back-button svg,
+.meal-faq-menu-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.meal-faq-menu-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(env(safe-area-inset-top) + 54px);
+  right: 16px;
+  width: 270px;
+  overflow: hidden;
+  border: 1px solid rgba(7, 54, 101, 0.08);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 16px 38px rgba(17, 34, 50, 0.2);
+}
+
+.meal-faq-menu-panel nav {
+  display: grid;
+  padding: 10px;
+}
+
+.meal-faq-menu-panel a {
+  padding: 13px 12px;
+  border-radius: 12px;
+  color: var(--mow-navy);
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.meal-faq-menu-panel a:hover {
+  background: var(--mow-cream);
+}
+
+.meal-faq-hero {
+  position: relative;
+  height: 370px;
+  overflow: hidden;
+  background: var(--mow-dark-navy);
+}
+
+.meal-faq-hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.meal-faq-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(4, 20, 34, 0.18) 0%,
+    rgba(4, 20, 34, 0.28) 48%,
+    rgba(4, 20, 34, 0.68) 100%
+  );
+}
+
+.meal-faq-hero-copy {
+  position: absolute;
+  z-index: 3;
+  right: 24px;
+  bottom: 40px;
+  left: 24px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.meal-faq-hero-copy h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.meal-faq-hero-copy p {
+  max-width: 350px;
+  margin: 10px auto 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.meal-faq-heart-divider {
+  display: flex;
+  max-width: 230px;
+  align-items: center;
+  gap: 10px;
+  margin: 14px auto 0;
+}
+
+.meal-faq-heart-divider span {
+  height: 1.5px;
+  flex: 1;
+  background: var(--mow-gold);
+}
+
+.meal-faq-heart-divider strong {
+  color: var(--mow-red);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.meal-faq-quick-facts {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  width: calc(100% - 24px);
+  margin: -24px auto 0;
+  overflow: hidden;
+  border-radius: 24px 24px 18px 18px;
+  background: var(--mow-cream);
+  box-shadow: 0 12px 28px rgba(24, 40, 58, 0.12);
+}
+
+.meal-faq-fact {
+  min-width: 0;
+  padding: 18px 8px 16px;
+  text-align: center;
+}
+
+.meal-faq-fact + .meal-faq-fact {
+  border-left: 1px solid rgba(7, 54, 101, 0.1);
+}
+
+.meal-faq-fact-art {
+  display: block;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 9px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--mow-gold-soft);
+  box-shadow: 0 2px 7px rgba(24, 40, 58, 0.08);
+}
+
+.meal-faq-fact-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.meal-faq-fact h2 {
+  margin: 0;
+  color: var(--mow-navy);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.meal-faq-fact p {
+  margin: 5px 0 0;
+  color: var(--mow-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* -------------------------------------------------
+   APPROVED OPTION B FAQ BODY
+-------------------------------------------------- */
+
+.meal-faq-body {
+  padding: 34px 16px 28px;
+}
+
+.meal-faq-section-heading {
+  margin-bottom: 18px;
+}
+
+.meal-faq-section-label {
+  margin: 0 0 7px;
+  color: var(--mow-gold);
+  font-size: 0.75rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.meal-faq-section-heading h2,
+.meal-faq-start-copy h2,
+.meal-faq-help-copy h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.meal-faq-section-heading h2 {
+  color: var(--mow-navy);
+  font-size: 19px;
+  line-height: 1.14;
+}
+
+.meal-faq-section-heading > p:last-child {
+  margin: 8px 0 0;
+  color: var(--mow-muted);
+  font-size: 15px;
+  line-height: 1.36;
+}
+
+.meal-faq-category-list {
+  display: grid;
+  gap: 10px;
+}
+
+.meal-faq-category-card {
+  overflow: hidden;
+  border: 1px solid rgba(7, 54, 101, 0.11);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 7px 18px rgba(24, 40, 58, 0.055);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.meal-faq-category-card.is-open {
+  border-color: rgba(197, 141, 0, 0.42);
+  box-shadow: 0 10px 24px rgba(24, 40, 58, 0.09);
+}
+
+.meal-faq-category-button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 56px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-faq-category-art {
+  display: block;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--mow-gold-soft);
+  box-shadow: 0 2px 7px rgba(24, 40, 58, 0.08);
+}
+
+.meal-faq-category-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.meal-faq-category-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.meal-faq-category-copy strong {
+  color: var(--mow-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.14;
+}
+
+.meal-faq-category-copy > span {
+  color: var(--mow-muted);
+  font-size: 15px;
+  line-height: 1.36;
+}
+
+.meal-faq-category-chevron {
+  display: grid;
+  place-items: center;
+  color: var(--mow-red);
+}
+
+.meal-faq-category-chevron svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s ease;
+}
+
+.meal-faq-category-chevron svg.is-open {
+  transform: rotate(180deg);
+}
+
+.meal-faq-question-list {
+  border-top: 1px solid rgba(7, 54, 101, 0.09);
+  background: #fcfbf8;
+}
+
+.meal-faq-question + .meal-faq-question {
+  border-top: 1px solid rgba(7, 54, 101, 0.08);
+}
+
+.meal-faq-question-button {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 16px;
+  border: 0;
+  color: var(--mow-navy);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-faq-question-button span {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.meal-faq-question-button strong {
+  flex: 0 0 auto;
+  color: var(--mow-red);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.meal-faq-answer {
+  padding: 0 16px 16px;
+}
+
+.meal-faq-answer p {
+  margin: 0;
+  color: var(--mow-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------
+   START APPLICATION CTA
+-------------------------------------------------- */
+
+.meal-faq-start-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 26px;
+  padding: 20px;
+  border: 1px solid rgba(197, 141, 0, 0.4);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 9px 22px rgba(24, 40, 58, 0.07);
+}
+
+.meal-faq-start-art {
+  display: block;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--mow-gold-soft);
+  box-shadow: 0 3px 9px rgba(24, 40, 58, 0.1);
+}
+
+.meal-faq-start-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.meal-faq-start-copy {
+  min-width: 0;
+}
+
+.meal-faq-start-copy .meal-faq-section-label {
+  margin-bottom: 5px;
+}
+
+.meal-faq-start-copy h2 {
+  color: var(--mow-navy);
+  font-size: 19px;
+  line-height: 1.14;
+}
+
+.meal-faq-start-copy > p:last-child {
+  margin: 8px 0 0;
+  color: var(--mow-muted);
+  font-size: 15px;
+  line-height: 1.36;
+}
+
+.meal-faq-start-button {
+  display: flex;
+  grid-column: 1 / -1;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 2px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  color: #ffffff;
+  background: var(--mow-red);
+  box-shadow: 0 7px 16px rgba(207, 47, 47, 0.2);
+  font-size: 0.96rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.meal-faq-start-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* -------------------------------------------------
+   STILL NEED HELP — LOCKED DARK BLUE CARD
+-------------------------------------------------- */
+
+.meal-faq-help-card {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 22px 20px;
+  border-radius: 22px;
+  color: #ffffff;
+  background: var(--mow-dark-navy);
+  box-shadow: 0 12px 26px rgba(4, 40, 71, 0.2);
+}
+
+.meal-faq-help-icon {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  border: 2px solid var(--mow-gold);
+  border-radius: 50%;
+  color: var(--mow-gold);
+}
+
+.meal-faq-help-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.meal-faq-help-copy {
+  min-width: 0;
+}
+
+.meal-faq-help-copy h2 {
+  color: #ffffff;
+  font-size: 19px;
+  line-height: 1.14;
+}
+
+.meal-faq-help-copy p {
+  margin: 5px 0 11px;
+  color: rgba(255, 255, 255, 0.83);
+  font-size: 15px;
+  line-height: 1.36;
+}
+
+.meal-faq-help-copy a {
+  display: block;
+  color: var(--mow-gold);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.meal-faq-help-copy span {
+  display: block;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.36;
+}
+
+/* -------------------------------------------------
+   BOTTOM NAV — MATCHES OTHER MOW APP PAGES
+-------------------------------------------------- */
+
+.meal-faq-bottom-nav {
+  position: fixed;
+  z-index: 50;
+  right: 50%;
+  bottom: 0;
+  display: grid;
+  width: min(430px, 100%);
+  grid-template-columns: repeat(5, 1fr);
+  min-height: 76px;
+  padding: 8px 6px max(7px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--mow-dark-navy);
+  box-shadow: 0 -5px 24px rgba(0, 0, 0, 0.16);
+  transform: translateX(50%);
+}
+
+.bottom-nav-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 2px;
+  border: 0;
+  border-radius: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bottom-nav-item svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bottom-nav-item span {
+  font-size: 0.68rem;
+  font-weight: 720;
+}
+
+.bottom-nav-item.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.bottom-nav-button {
+  width: 100%;
+}
+
+@media (max-width: 390px) {
+  .meal-faq-start-art {
+    width: 54px;
+    height: 54px;
+  }
+
+  .meal-faq-fact-art {
+    width: 42px;
+    height: 42px;
+  }
+
+  .meal-faq-hero {
+    height: 360px;
+  }
+
+  .meal-faq-hero-copy {
+    right: 18px;
+    left: 18px;
+  }
+
+  .meal-faq-hero-copy h1 {
+    font-size: 1.82rem;
+  }
+
+  .meal-faq-quick-facts {
+    width: calc(100% - 16px);
+  }
+
+  .meal-faq-fact {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+
+  .meal-faq-body {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .meal-faq-category-button {
+    grid-template-columns: 52px minmax(0, 1fr) 24px;
+    gap: 10px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .meal-faq-category-art {
+    width: 52px;
+    height: 52px;
+  }
+
+  .meal-faq-start-card {
+    padding: 18px;
+  }
+
+  .meal-faq-help-card {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 13px;
+    padding: 20px 17px;
+  }
+
+  .meal-faq-help-icon {
+    width: 54px;
+    height: 54px;
+  }
+
+  .meal-faq-help-copy h2 {
+    font-size: 1.3rem;
+  }
+}

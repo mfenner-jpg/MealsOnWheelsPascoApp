@@ -1,0 +1,48 @@
+* {
+  box-sizing: border-box;
+}
+
+.desktop-stage {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background: #e9edf1;
+  padding: 28px;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  min-height: calc(100vh - 56px);
+  background: #ffffff;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-shadow: 0 24px 70px rgba(24, 40, 58, 0.18);
+}
+
+@media (min-width: 769px) {
+  .app-shell {
+    height: calc(100vh - 56px);
+    min-height: 680px;
+    max-height: 920px;
+    border-radius: 34px;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktop-stage {
+    display: block;
+    min-height: 100vh;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
