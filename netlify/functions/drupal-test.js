@@ -3,7 +3,6 @@ export async function handler() {
     "https://www.mealsonwheelspasco.org/form/mow-app-connection-test";
 
   try {
-    // STEP 1: Load the Drupal Webform page.
     const formResponse = await fetch(DRUPAL_FORM_URL, {
       method: "GET",
       headers: {
@@ -30,7 +29,6 @@ export async function handler() {
       };
     }
 
-    // STEP 2: Read Drupal's hidden form values.
     const getHiddenValue = (name) => {
       const pattern = new RegExp(
         `name=["']${name}["'][^>]*value=["']([^"']*)["']`,
@@ -51,7 +49,6 @@ export async function handler() {
     const formToken = getHiddenValue("form_token");
     const formId = getHiddenValue("form_id");
 
-    // Drupal may legitimately omit form_token on some forms.
     if (!formBuildId || !formId) {
       return {
         statusCode: 502,
@@ -72,7 +69,6 @@ export async function handler() {
       };
     }
 
-    // STEP 3: Create a harmless temporary test submission.
     const formData = new URLSearchParams();
 
     formData.set("name", "MOW App Connection Test");
@@ -91,7 +87,6 @@ export async function handler() {
     formData.set("form_id", formId);
     formData.set("op", "Submit");
 
-    // STEP 4: Submit the form back to Drupal.
     const submitResponse = await fetch(DRUPAL_FORM_URL, {
       method: "POST",
       headers: {
@@ -103,30 +98,29 @@ export async function handler() {
       redirect: "follow",
     });
 
-    const responseText = await submitResponse.text();
+    const finalUrl = submitResponse.url || "";
 
-    const lowerResponse = responseText.toLowerCase();
+    const reachedConfirmation =
+      finalUrl.includes("/confirmation");
 
-    const possibleDrupalError =
-      lowerResponse.includes("error") ||
-      lowerResponse.includes("required field") ||
-      lowerResponse.includes("is required");
+    const accepted =
+      submitResponse.ok && reachedConfirmation;
 
     return {
-      statusCode: submitResponse.ok && !possibleDrupalError ? 200 : 502,
+      statusCode: accepted ? 200 : 502,
 
       headers: {
         "Content-Type": "application/json",
       },
 
       body: JSON.stringify({
-        ok: submitResponse.ok && !possibleDrupalError,
+        ok: accepted,
 
         stage: "submit-test-webform",
 
         drupalStatus: submitResponse.status,
 
-        finalUrl: submitResponse.url,
+        finalUrl,
 
         hiddenFields: {
           form_build_id: true,
@@ -140,12 +134,9 @@ export async function handler() {
           telephone: true,
         },
 
-        possibleDrupalError,
-
-        message:
-          submitResponse.ok && !possibleDrupalError
-            ? "Netlify submitted the temporary test form to Drupal."
-            : "Netlify attempted the Drupal submission, but Drupal may have rejected it.",
+        message: accepted
+          ? "SUCCESS — Drupal accepted and stored the test submission."
+          : "Netlify submitted the form, but Drupal did not redirect to the expected confirmation page.",
       }),
     };
   } catch (error) {
