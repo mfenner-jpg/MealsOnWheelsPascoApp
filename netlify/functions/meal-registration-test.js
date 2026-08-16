@@ -1,11 +1,11 @@
 export async function handler() {
   const DRUPAL_FORM_URL =
-  "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
+    "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
     // -------------------------------------------------------
     // STEP 1
-    // Load the real Meal Delivery Registration form from Drupal
+    // Load the real Meal Delivery Registration form
     // -------------------------------------------------------
 
     const formResponse = await fetch(DRUPAL_FORM_URL, {
@@ -22,14 +22,18 @@ export async function handler() {
     if (!formResponse.ok) {
       return {
         statusCode: 502,
+
         headers: {
           "Content-Type": "application/json",
         },
 
         body: JSON.stringify({
           ok: false,
+
           stage: "load-meal-registration-form",
+
           drupalStatus: formResponse.status,
+
           message:
             "Netlify could not load the Meal Delivery Registration form from Drupal.",
         }),
@@ -38,7 +42,7 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 2
-    // Read Drupal's hidden Webform values
+    // Read Drupal hidden Webform values
     // -------------------------------------------------------
 
     const getHiddenValue = (name) => {
@@ -95,23 +99,13 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 3
-    // Build a CONTROLLED TEST submission.
-    //
-    // We are intentionally submitting only the standard
-    // contact/application fields at this stage.
-    //
-    // We are NOT yet trying to bypass or fake:
-    // - Signature
-    // - CAPTCHA
-    // - Medical questions
-    // - Pet questions
-    // - Additional household members
-    //
-    // Drupal is expected to validate anything still required.
+    // Create controlled test application
     // -------------------------------------------------------
 
     const formData =
       new URLSearchParams();
+
+    // Primary applicant information
 
     formData.set(
       "client_name",
@@ -158,6 +152,10 @@ export async function handler() {
       `mow-real-form-test-${Date.now()}@example.com`
     );
 
+    // -------------------------------------------------------
+    // Emergency contact
+    // -------------------------------------------------------
+
     formData.set(
       "emergency_contact",
       "Test Emergency Contact"
@@ -176,6 +174,38 @@ export async function handler() {
     formData.set(
       "email_ec",
       "emergency-test@example.com"
+    );
+
+    // -------------------------------------------------------
+    // Required health / household questions
+    //
+    // For this controlled test we are selecting NO.
+    // These correspond to the field keys shown in Drupal.
+    // -------------------------------------------------------
+
+    formData.set(
+      "are_you_a_diabetic_",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_to_nuts_",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_to_seafood_",
+      "No"
+    );
+
+    formData.set(
+      "are_you_a_veteran_1",
+      "No"
+    );
+
+    formData.set(
+      "do_you_own_a_pet_",
+      "No"
     );
 
     // -------------------------------------------------------
@@ -206,7 +236,7 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 4
-    // Send the controlled test to Drupal
+    // Submit controlled test to Drupal
     // -------------------------------------------------------
 
     const submitResponse =
@@ -236,7 +266,7 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 5
-    // Determine what Drupal did
+    // Determine Drupal result
     // -------------------------------------------------------
 
     const reachedConfirmation =
@@ -261,7 +291,7 @@ export async function handler() {
       );
 
     // -------------------------------------------------------
-    // Successful real-form submission
+    // SUCCESS
     // -------------------------------------------------------
 
     if (
@@ -300,9 +330,7 @@ export async function handler() {
     }
 
     // -------------------------------------------------------
-    // Expected outcome for this first test:
-    // Drupal receives the fields but rejects the incomplete
-    // application because required fields are still missing.
+    // EXPECTED VALIDATION RESPONSE
     // -------------------------------------------------------
 
     return {
@@ -346,14 +374,21 @@ export async function handler() {
           primary_contact_phone:
             true,
           email: true,
+
           emergency_contact: true,
           relationship: true,
           home_mobile_phone_: true,
           email_ec: true,
+
+          are_you_a_diabetic_: true,
+          are_you_allergic_to_nuts_: true,
+          are_you_allergic_to_seafood_: true,
+          are_you_a_veteran_1: true,
+          do_you_own_a_pet_: true,
         },
 
         message:
-          "Drupal received the Meal Delivery Registration test request but did not accept the incomplete application. This is expected while required medical, conditional, CAPTCHA, and signature fields are not yet included.",
+          "Drupal received the Meal Delivery Registration test request. The five required Yes/No questions are now included. Remaining required or conditional fields still need to be mapped before Drupal can accept the complete application.",
       }),
     };
   } catch (error) {
