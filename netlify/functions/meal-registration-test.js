@@ -1,180 +1,491 @@
-export async function handler() {
+export async function handler(event) {
   const DRUPAL_FORM_URL =
     "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
-    // -------------------------------------------------------
-    // STEP 1 — Load the real Drupal form
-    // -------------------------------------------------------
+    // =======================================================
+    // GET
+    // Load fresh Drupal form + CAPTCHA challenge
+    // Nothing is submitted during GET.
+    // =======================================================
 
-    const formResponse = await fetch(DRUPAL_FORM_URL, {
-      method: "GET",
-      headers: {
-        Accept: "text/html",
-        "User-Agent": "MOW-Pasco-App-Signature-Format-Diagnostic",
-      },
-      redirect: "follow",
-    });
+    if (!event.httpMethod || event.httpMethod === "GET") {
+      const formResponse = await fetch(DRUPAL_FORM_URL, {
+        method: "GET",
+        headers: {
+          Accept: "text/html",
+          "User-Agent": "MOW-Pasco-App-Full-Integration-Test",
+        },
+        redirect: "follow",
+      });
 
-    const html = await formResponse.text();
+      const html = await formResponse.text();
 
-    if (!formResponse.ok) {
-      return jsonResponse(502, {
-        ok: false,
-        stage: "load-signature-format-diagnostic",
-        drupalStatus: formResponse.status,
+      if (!formResponse.ok) {
+        return jsonResponse(502, {
+          ok: false,
+          stage: "load-full-test",
+          drupalStatus: formResponse.status,
+          message:
+            "Netlify could not load the Meal Delivery Registration form.",
+        });
+      }
+
+      const formBuildId =
+        getInputValue(html, "form_build_id");
+
+      const formToken =
+        getInputValue(html, "form_token");
+
+      const formId =
+        getInputValue(html, "form_id");
+
+      const captchaSid =
+        getInputValue(html, "captcha_sid");
+
+      const captchaToken =
+        getInputValue(html, "captcha_token");
+
+      const captchaResponseField =
+        findInputNameById(
+          html,
+          "edit-captcha-response"
+        ) || "captcha_response";
+
+      const captchaQuestion =
+        extractMathQuestion(html);
+
+      if (
+        !formBuildId ||
+        !formId ||
+        !captchaSid ||
+        !captchaToken ||
+        !captchaQuestion
+      ) {
+        return jsonResponse(502, {
+          ok: false,
+          stage: "prepare-full-test",
+
+          found: {
+            form_build_id: Boolean(formBuildId),
+            form_token: Boolean(formToken),
+            form_id: Boolean(formId),
+            captcha_sid: Boolean(captchaSid),
+            captcha_token: Boolean(captchaToken),
+            captcha_question: Boolean(captchaQuestion),
+          },
+
+          message:
+            "Drupal loaded, but one or more values required for the full test could not be read.",
+        });
+      }
+
+      return jsonResponse(200, {
+        ok: true,
+
+        stage: "full-test-ready",
+
+        captcha: {
+          question: captchaQuestion,
+          responseField: captchaResponseField,
+        },
+
+        state: {
+          formBuildId,
+          formToken,
+          formId,
+          captchaSid,
+          captchaToken,
+        },
+
         message:
-          "Netlify could not load the Meal Delivery Registration form.",
+          "Full integration test is ready. Answer the CAPTCHA and provide a signature before submitting.",
       });
     }
 
-    // -------------------------------------------------------
-    // STEP 2 — Find the hidden signature input
-    // -------------------------------------------------------
+    // =======================================================
+    // POST
+    // Submit the complete TEST registration
+    // =======================================================
 
-    const signatureTag =
-      findInputTagByName(html, "signature");
+    if (event.httpMethod === "POST") {
+      let requestData = {};
 
-    const signatureField = signatureTag
-      ? {
-          type: getAttribute(signatureTag, "type"),
-          name: getAttribute(signatureTag, "name"),
-          value: getAttribute(signatureTag, "value"),
-          id: getAttribute(signatureTag, "id"),
-          className: getAttribute(signatureTag, "class"),
-          dataAttributes: getDataAttributes(signatureTag),
-        }
-      : null;
+      try {
+        requestData =
+          JSON.parse(event.body || "{}");
+      } catch {
+        return jsonResponse(400, {
+          ok: false,
+          stage: "read-full-test-request",
+          message:
+            "The full integration test request was not valid JSON.",
+        });
+      }
 
-    // -------------------------------------------------------
-    // STEP 3 — Find inline script blocks that mention
-    // signature / webform-signature / SignaturePad
-    // -------------------------------------------------------
+      const {
+        captchaResponse,
+        captchaResponseField,
+        signature,
+        state,
+      } = requestData;
 
-    const scriptBlocks =
-      html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) || [];
+      if (
+        !captchaResponse ||
+        !signature ||
+        !state?.formBuildId ||
+        !state?.formId ||
+        !state?.captchaSid ||
+        !state?.captchaToken
+      ) {
+        return jsonResponse(400, {
+          ok: false,
+          stage: "validate-full-test-input",
+          message:
+            "CAPTCHA answer, signature, or Drupal form state is missing.",
+        });
+      }
 
-    const signatureScripts = scriptBlocks
-      .map((script) => cleanScriptTag(script))
-      .filter((script) => {
-        const lower = script.toLowerCase();
+      // Signature must be the PNG data URL format
+      // already proven by our signature test.
+      if (
+        !signature.startsWith(
+          "data:image/png;base64,"
+        )
+      ) {
+        return jsonResponse(400, {
+          ok: false,
+          stage: "validate-signature",
+          message:
+            "The signature is not in the PNG data URL format Drupal expects.",
+        });
+      }
 
-        return (
-          lower.includes("signature") ||
-          lower.includes("webform-signature") ||
-          lower.includes("signaturepad") ||
-          lower.includes("signature_pad")
-        );
-      })
-      .map((script) => script.slice(0, 5000));
+      const formData =
+        new URLSearchParams();
 
-    // -------------------------------------------------------
-    // STEP 4 — Find JS/CSS asset references related to
-    // signature functionality
-    // -------------------------------------------------------
+      // =====================================================
+      // PRIMARY CLIENT — CLEARLY MARKED TEST
+      // =====================================================
 
-    const externalScriptTags =
-      html.match(/<script\b[^>]*src=["'][^"']+["'][^>]*><\/script>/gi) || [];
-
-    const signatureScriptUrls = externalScriptTags
-      .map((tag) => getAttribute(tag, "src"))
-      .filter((src) => {
-        const lower = src.toLowerCase();
-
-        return (
-          lower.includes("signature") ||
-          lower.includes("webform")
-        );
-      });
-
-    const linkTags =
-      html.match(/<link\b[^>]*href=["'][^"']+["'][^>]*>/gi) || [];
-
-    const signatureStyleUrls = linkTags
-      .map((tag) => getAttribute(tag, "href"))
-      .filter((href) => {
-        const lower = href.toLowerCase();
-
-        return (
-          lower.includes("signature") ||
-          lower.includes("webform")
-        );
-      });
-
-    // -------------------------------------------------------
-    // STEP 5 — Search raw HTML around the signature field
-    // -------------------------------------------------------
-
-    const signatureHtmlContext =
-      extractContext(
-        html,
-        'name="signature"',
-        1800
-      ) ||
-      extractContext(
-        html,
-        "webform-signature",
-        1800
+      formData.set(
+        "client_name",
+        "TEST - MOW APP INTEGRATION"
       );
 
-    // -------------------------------------------------------
-    // STEP 6 — Look for likely serialized value formats
-    // mentioned in the page
-    // -------------------------------------------------------
+      formData.set(
+        "dob",
+        "1945-01-15"
+      );
 
-    const formatHints = [];
+      formData.set(
+        "address",
+        "123 TEST STREET"
+      );
 
-    const lowerHtml = html.toLowerCase();
+      formData.set(
+        "mobile_home_park_subdivision",
+        "TEST COMMUNITY"
+      );
 
-    const hints = [
-      "data:image/png;base64",
-      "data:image/jpeg;base64",
-      "data:image/svg+xml",
-      "todataurl",
-      "toDataURL",
-      "json.stringify",
-      "signaturepad",
-      "signature_pad",
-      "webform-signature",
-    ];
+      formData.set(
+        "city",
+        "TEST CITY"
+      );
 
-    for (const hint of hints) {
-      if (lowerHtml.includes(hint.toLowerCase())) {
-        formatHints.push(hint);
+      formData.set(
+        "state",
+        "Florida"
+      );
+
+      formData.set(
+        "zip_code",
+        "33542"
+      );
+
+      formData.set(
+        "primary_contact_phone",
+        "813-555-0100"
+      );
+
+      formData.set(
+        "email",
+        `mow-app-integration-test-${Date.now()}@example.com`
+      );
+
+      // =====================================================
+      // EMERGENCY CONTACT — CLEARLY MARKED TEST
+      // =====================================================
+
+      formData.set(
+        "emergency_contact",
+        "TEST EMERGENCY CONTACT"
+      );
+
+      formData.set(
+        "relationship",
+        "TEST FRIEND"
+      );
+
+      formData.set(
+        "home_mobile_phone_",
+        "813-555-0101"
+      );
+
+      formData.set(
+        "email_ec",
+        "test-emergency-contact@example.com"
+      );
+
+      // =====================================================
+      // HEALTH QUESTIONS
+      // =====================================================
+
+      formData.set(
+        "are_you_a_diabetic_",
+        "No"
+      );
+
+      formData.set(
+        "are_you_allergic_to_nuts_",
+        "No"
+      );
+
+      formData.set(
+        "are_you_allergic_to_seafood_",
+        "No"
+      );
+
+      formData.set(
+        "are_you_a_veteran_1",
+        "No"
+      );
+
+      // =====================================================
+      // PET
+      // Keep this branch simple but previously proven.
+      // =====================================================
+
+      formData.set(
+        "do_you_own_a_pet_2",
+        "Yes"
+      );
+
+      formData.append(
+        "what_pet_s_do_you_own_[Dog]",
+        "Dog"
+      );
+
+      // =====================================================
+      // OPTIONAL MEDICAL COMMENTS
+      // =====================================================
+
+      formData.set(
+        "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
+        "TEST SUBMISSION - DELETE AFTER MOW APP INTEGRATION TESTING."
+      );
+
+      // =====================================================
+      // ADDITIONAL HOUSEHOLD MEMBER
+      //
+      // Keep NO for our first complete submission.
+      // The 1-person and 2-person branches were already
+      // separately validated.
+      // =====================================================
+
+      formData.set(
+        "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
+        "No"
+      );
+
+      // =====================================================
+      // CAPTCHA
+      // User manually answered this challenge.
+      // =====================================================
+
+      formData.set(
+        "captcha_sid",
+        state.captchaSid
+      );
+
+      formData.set(
+        "captcha_token",
+        state.captchaToken
+      );
+
+      formData.set(
+        captchaResponseField ||
+          "captcha_response",
+        String(captchaResponse).trim()
+      );
+
+      // =====================================================
+      // SIGNATURE
+      // =====================================================
+
+      formData.set(
+        "signature",
+        signature
+      );
+
+      // =====================================================
+      // DRUPAL FORM STATE
+      // =====================================================
+
+      formData.set(
+        "form_build_id",
+        state.formBuildId
+      );
+
+      if (state.formToken) {
+        formData.set(
+          "form_token",
+          state.formToken
+        );
       }
+
+      formData.set(
+        "form_id",
+        state.formId
+      );
+
+      formData.set(
+        "op",
+        "Submit"
+      );
+
+      // =====================================================
+      // SUBMIT TO REAL DRUPAL WEBFORM
+      // =====================================================
+
+      const submitResponse =
+        await fetch(DRUPAL_FORM_URL, {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+
+            Accept: "text/html",
+
+            "User-Agent":
+              "MOW-Pasco-App-Full-Integration-Test",
+          },
+
+          body:
+            formData.toString(),
+
+          redirect:
+            "follow",
+        });
+
+      const responseText =
+        await submitResponse.text();
+
+      const finalUrl =
+        submitResponse.url || "";
+
+      const diagnosticText =
+        cleanHtml(responseText).slice(
+          0,
+          5000
+        );
+
+      const lowerDiagnostic =
+        diagnosticText.toLowerCase();
+
+      const reachedConfirmation =
+        finalUrl.includes("/confirmation");
+
+      const mathRequired =
+        lowerDiagnostic.includes(
+          "math question field is required"
+        );
+
+      const signatureRequired =
+        lowerDiagnostic.includes(
+          "signature field is required"
+        );
+
+      const captchaInvalid =
+        lowerDiagnostic.includes("captcha") &&
+        (
+          lowerDiagnostic.includes("incorrect") ||
+          lowerDiagnostic.includes("invalid") ||
+          lowerDiagnostic.includes("wrong")
+        );
+
+      // =====================================================
+      // FULL SUCCESS
+      // =====================================================
+
+      if (
+        submitResponse.ok &&
+        reachedConfirmation
+      ) {
+        return jsonResponse(200, {
+          ok: true,
+
+          stage:
+            "full-meal-registration-test-passed",
+
+          drupalStatus:
+            submitResponse.status,
+
+          finalUrl,
+
+          recordExpected:
+            true,
+
+          testClientName:
+            "TEST - MOW APP INTEGRATION",
+
+          message:
+            "SUCCESS — Drupal accepted the complete MOW App Meal Delivery Registration test. A TEST submission record should now exist in Drupal.",
+        });
+      }
+
+      // =====================================================
+      // DIAGNOSTIC
+      // =====================================================
+
+      return jsonResponse(422, {
+        ok: false,
+
+        stage:
+          "full-meal-registration-test",
+
+        drupalStatus:
+          submitResponse.status,
+
+        finalUrl,
+
+        reachedConfirmation,
+
+        mathRequired,
+
+        captchaInvalid,
+
+        signatureRequired,
+
+        diagnosticText,
+
+        message:
+          "Drupal processed the complete TEST submission but did not reach confirmation. Review diagnosticText for the remaining validation issue.",
+      });
     }
 
-    // -------------------------------------------------------
-    // STEP 7 — Return inspection only
-    // -------------------------------------------------------
-
-    return jsonResponse(200, {
-      ok: true,
-
-      stage: "signature-value-format-inspection",
-
-      drupalStatus: formResponse.status,
-
-      signatureField,
-
-      formatHints,
-
-      signatureHtmlContext,
-
-      signatureScripts,
-
-      signatureScriptUrls,
-
-      signatureStyleUrls,
-
-      message:
-        "Signature value-format inspection complete. No form was submitted. Review the signature field, format hints, and signature-related scripts to determine what Drupal expects.",
+    return jsonResponse(405, {
+      ok: false,
+      message: "Method not allowed.",
     });
+
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
-      stage: "signature-value-format-inspection",
+      stage:
+        "full-meal-registration-test",
 
       message:
         error instanceof Error
@@ -185,43 +496,32 @@ export async function handler() {
 }
 
 
-// ---------------------------------------------------------
-// Find an input tag by NAME
-// ---------------------------------------------------------
+// =========================================================
+// Read input value by NAME
+// =========================================================
 
-function findInputTagByName(
+function getInputValue(
   html,
   name
 ) {
   const escaped =
     escapeRegex(name);
 
-  const pattern =
+  const normal =
     new RegExp(
-      `<input\\b[^>]*name=["']${escaped}["'][^>]*>`,
+      `<input\\b[^>]*name=["']${escaped}["'][^>]*value=["']([^"']*)["'][^>]*>`,
       "i"
     );
 
-  return html.match(pattern)?.[0] || "";
-}
-
-
-// ---------------------------------------------------------
-// Extract normal HTML attribute
-// ---------------------------------------------------------
-
-function getAttribute(
-  tag,
-  attributeName
-) {
-  const pattern =
+  const reversed =
     new RegExp(
-      `${escapeRegex(attributeName)}=["']([^"']*)["']`,
+      `<input\\b[^>]*value=["']([^"']*)["'][^>]*name=["']${escaped}["'][^>]*>`,
       "i"
     );
 
   const match =
-    tag.match(pattern);
+    html.match(normal) ||
+    html.match(reversed);
 
   return match
     ? decodeHtml(match[1])
@@ -229,80 +529,96 @@ function getAttribute(
 }
 
 
-// ---------------------------------------------------------
-// Extract data-* attributes from an HTML tag
-// ---------------------------------------------------------
+// =========================================================
+// Find input NAME by HTML ID
+// =========================================================
 
-function getDataAttributes(tag) {
-  const result = {};
+function findInputNameById(
+  html,
+  id
+) {
+  const escaped =
+    escapeRegex(id);
 
-  const matches =
-    tag.matchAll(
-      /\s(data-[a-z0-9_-]+)=["']([^"']*)["']/gi
+  const tagPattern =
+    new RegExp(
+      `<input\\b[^>]*id=["']${escaped}["'][^>]*>`,
+      "i"
     );
 
-  for (const match of matches) {
-    result[match[1]] =
-      decodeHtml(match[2]);
+  const tag =
+    html.match(tagPattern)?.[0];
+
+  if (!tag) {
+    return "";
   }
 
-  return result;
+  const nameMatch =
+    tag.match(
+      /name=["']([^"']+)["']/i
+    );
+
+  return nameMatch
+    ? decodeHtml(nameMatch[1])
+    : "";
 }
 
 
-// ---------------------------------------------------------
-// Remove <script> wrapper but preserve JS text
-// ---------------------------------------------------------
+// =========================================================
+// Extract Math CAPTCHA question
+// =========================================================
 
-function cleanScriptTag(script) {
-  return script
-    .replace(
-      /^<script\b[^>]*>/i,
-      ""
-    )
-    .replace(
-      /<\/script>$/i,
-      ""
-    )
+function extractMathQuestion(
+  html
+) {
+  const text =
+    cleanHtml(html);
+
+  const match =
+    text.match(
+      /Math question\s+([^=]{1,40}=)/i
+    );
+
+  if (!match) {
+    return "";
+  }
+
+  return match[1]
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 
-// ---------------------------------------------------------
-// Extract raw HTML context around a search phrase
-// ---------------------------------------------------------
+// =========================================================
+// Clean Drupal HTML
+// =========================================================
 
-function extractContext(
-  html,
-  searchText,
-  radius
-) {
-  const lowerHtml =
-    html.toLowerCase();
-
-  const lowerSearch =
-    searchText.toLowerCase();
-
-  const position =
-    lowerHtml.indexOf(lowerSearch);
-
-  if (position === -1) {
-    return "";
-  }
-
-  return html.slice(
-    Math.max(0, position - radius),
-    Math.min(
-      html.length,
-      position + searchText.length + radius
+function cleanHtml(html) {
+  return html
+    .replace(
+      /<script[\s\S]*?<\/script>/gi,
+      " "
     )
-  );
+    .replace(
+      /<style[\s\S]*?<\/style>/gi,
+      " "
+    )
+    .replace(
+      /<[^>]+>/g,
+      " "
+    )
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // Decode basic HTML entities
-// ---------------------------------------------------------
+// =========================================================
 
 function decodeHtml(value) {
   return value
@@ -314,9 +630,9 @@ function decodeHtml(value) {
 }
 
 
-// ---------------------------------------------------------
+// =========================================================
 // Escape RegExp input
-// ---------------------------------------------------------
+// =========================================================
 
 function escapeRegex(value) {
   return value.replace(
@@ -326,9 +642,9 @@ function escapeRegex(value) {
 }
 
 
-// ---------------------------------------------------------
-// Standard JSON response helper
-// ---------------------------------------------------------
+// =========================================================
+// JSON response helper
+// =========================================================
 
 function jsonResponse(
   statusCode,
