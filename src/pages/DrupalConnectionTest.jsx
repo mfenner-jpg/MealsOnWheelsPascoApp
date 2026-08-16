@@ -261,7 +261,7 @@ function DrupalConnectionTest() {
       if (
         response.ok &&
         data.ok &&
-        data.stage === "full-meal-registration-test-passed"
+        data.stage === "final-conditional-test-passed"
       ) {
         setStatus("FULL TEST PASSED");
 
