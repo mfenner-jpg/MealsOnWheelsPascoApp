@@ -11,7 +11,7 @@ function DrupalConnectionTest() {
     setResult(null);
 
     try {
-      const response = await fetch("/.netlify/functions/drupal-test", {
+      const response = await fetch("/.netlify/functions/meal-registration-test", {
         method: "GET",
         headers: {
           Accept: "application/json",
