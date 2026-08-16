@@ -7,7 +7,6 @@ export async function handler() {
     // STEP 1
     // Load the real Meal Delivery Registration form.
     //
-    // IMPORTANT:
     // This diagnostic version DOES NOT submit anything.
     // It only reads the form HTML so we can determine the
     // actual option values Drupal expects.
@@ -68,10 +67,8 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 3
-    // Inspect the actual HTML input values Drupal generated
-    // for the five questions that caused the server error.
-    //
-    // We are NOT guessing Yes/No values anymore.
+    // Inspect the actual Drupal values for the required
+    // Yes/No questions.
     // -------------------------------------------------------
 
     const fieldsToInspect = [
@@ -79,7 +76,9 @@ export async function handler() {
       "are_you_allergic_to_nuts_",
       "are_you_allergic_to_seafood_",
       "are_you_a_veteran_1",
-      "do_you_own_a_pet_",
+
+      // NEW radio field replacing the old checkbox field
+      "do_you_own_a_pet_2",
     ];
 
     const fieldDefinitions = {};
@@ -91,8 +90,7 @@ export async function handler() {
 
     // -------------------------------------------------------
     // STEP 4
-    // Also inspect the additional-meal-service field because
-    // it will be the next required conditional field.
+    // Inspect the additional meal-service question too.
     // -------------------------------------------------------
 
     const additionalMealField =
@@ -220,7 +218,7 @@ function getAttribute(tag, attributeName) {
 
 
 // ---------------------------------------------------------
-// Minimal HTML entity decoding for diagnostic values.
+// Minimal HTML entity decoding.
 // ---------------------------------------------------------
 
 function decodeHtml(value) {
@@ -234,7 +232,7 @@ function decodeHtml(value) {
 
 
 // ---------------------------------------------------------
-// Escape text before putting it into a RegExp.
+// Escape text before using it inside RegExp.
 // ---------------------------------------------------------
 
 function escapeRegex(value) {
