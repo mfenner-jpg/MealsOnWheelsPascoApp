@@ -4,8 +4,7 @@ export async function handler() {
 
   try {
     // -------------------------------------------------------
-    // STEP 1
-    // Load the real Meal Delivery Registration form
+    // STEP 1 — Load Drupal form
     // -------------------------------------------------------
 
     const formResponse = await fetch(DRUPAL_FORM_URL, {
@@ -30,18 +29,19 @@ export async function handler() {
     }
 
     // -------------------------------------------------------
-    // STEP 2
-    // Read Drupal hidden Webform values
+    // STEP 2 — Read Drupal hidden fields
     // -------------------------------------------------------
 
     const getHiddenValue = (name) => {
+      const escapedName = escapeRegex(name);
+
       const pattern = new RegExp(
-        `name=["']${escapeRegex(name)}["'][^>]*value=["']([^"']*)["']`,
+        `name=["']${escapedName}["'][^>]*value=["']([^"']*)["']`,
         "i"
       );
 
       const reversePattern = new RegExp(
-        `value=["']([^"']*)["'][^>]*name=["']${escapeRegex(name)}["']`,
+        `value=["']([^"']*)["'][^>]*name=["']${escapedName}["']`,
         "i"
       );
 
@@ -65,19 +65,20 @@ export async function handler() {
       return jsonResponse(502, {
         ok: false,
         stage: "prepare-meal-registration",
+
         hiddenFields: {
           form_build_id: Boolean(formBuildId),
           form_token: Boolean(formToken),
           form_id: Boolean(formId),
         },
+
         message:
           "Netlify reached the Meal Delivery Registration form, but required Drupal hidden values could not be read.",
       });
     }
 
     // -------------------------------------------------------
-    // STEP 3
-    // Controlled test application
+    // STEP 3 — Controlled test application
     // -------------------------------------------------------
 
     const formData =
@@ -90,9 +91,10 @@ export async function handler() {
       "MOW App Real Form Test"
     );
 
+    // Correct HTML/Drupal date format
     formData.set(
       "dob",
-      "01/15/1945"
+      "1945-01-15"
     );
 
     formData.set(
@@ -130,7 +132,9 @@ export async function handler() {
       `mow-real-form-test-${Date.now()}@example.com`
     );
 
+    // -------------------------------------------------------
     // Emergency contact
+    // -------------------------------------------------------
 
     formData.set(
       "emergency_contact",
@@ -152,7 +156,9 @@ export async function handler() {
       "emergency-test@example.com"
     );
 
-    // Required Yes / No questions
+    // -------------------------------------------------------
+    // Required health questions
+    // -------------------------------------------------------
 
     formData.set(
       "are_you_a_diabetic_",
@@ -174,14 +180,47 @@ export async function handler() {
       "No"
     );
 
-    // NEW radio version of pet question
+    // -------------------------------------------------------
+    // PET TEST
+    //
+    // New radio field = YES
+    // -------------------------------------------------------
 
     formData.set(
       "do_you_own_a_pet_2",
-      "No"
+      "Yes"
     );
 
-    // No additional household member for this test
+    /*
+     * The Drupal Build screen showed the pet-choice key as:
+     *
+     * what_pet_s_do_you_own_
+     *
+     * Because this is a CHECKBOX element, Drupal normally
+     * expects array-style submission syntax.
+     *
+     * This test selects DOG only.
+     */
+
+    formData.append(
+      "what_pet_s_do_you_own_[Dog]",
+      "Dog"
+    );
+
+    // -------------------------------------------------------
+    // Optional medical restrictions / conditions
+    // -------------------------------------------------------
+
+    formData.set(
+      "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
+      "MOW App integration test — no actual medical restrictions."
+    );
+
+    // -------------------------------------------------------
+    // Additional household members
+    //
+    // Keep NO for this test.
+    // -------------------------------------------------------
 
     formData.set(
       "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
@@ -215,8 +254,7 @@ export async function handler() {
     );
 
     // -------------------------------------------------------
-    // STEP 4
-    // Submit test to Drupal
+    // STEP 4 — Submit to Drupal
     // -------------------------------------------------------
 
     const submitResponse =
@@ -275,6 +313,7 @@ export async function handler() {
     ) {
       return jsonResponse(200, {
         ok: true,
+
         stage:
           "meal-registration-submission",
 
@@ -289,20 +328,20 @@ export async function handler() {
     }
 
     // -------------------------------------------------------
-    // DIAGNOSTIC RESPONSE
+    // Diagnostic response
     // -------------------------------------------------------
 
     const diagnosticText =
       cleanHtml(responseText).slice(
         0,
-        2500
+        3500
       );
 
     return jsonResponse(422, {
       ok: false,
 
       stage:
-        "meal-registration-diagnostic",
+        "meal-registration-pet-medical-test",
 
       drupalStatus:
         submitResponse.status,
@@ -330,29 +369,40 @@ export async function handler() {
         zip_code: true,
         primary_contact_phone: true,
         email: true,
+
         emergency_contact: true,
         relationship: true,
         home_mobile_phone_: true,
         email_ec: true,
+
         are_you_a_diabetic_: true,
         are_you_allergic_to_nuts_: true,
         are_you_allergic_to_seafood_: true,
         are_you_a_veteran_1: true,
+
         do_you_own_a_pet_2: true,
-        would_anyone_else_in_your_home_like_to_be_included_in_this_meal_: true,
+        pet_test_value: "Yes",
+        pet_choice_attempted: "Dog",
+
+        medical_restrictions_tested: true,
+
+        would_anyone_else_in_your_home_like_to_be_included_in_this_meal_:
+          true,
+        additional_household_value:
+          "No",
       },
 
       diagnosticText,
 
       message:
-        "Drupal received the Meal Delivery Registration test request. The new pet radio field and the no-additional-household answer were included. Review diagnosticText for the next remaining validation or server issue.",
+        "Drupal received the pet/medical test. Review diagnosticText to determine whether DOB, medical restrictions, and the conditional Dog selection were accepted.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
       stage:
-        "meal-registration-test",
+        "meal-registration-pet-medical-test",
 
       message:
         error instanceof Error
@@ -403,7 +453,7 @@ function escapeRegex(value) {
 
 
 // ---------------------------------------------------------
-// Standard JSON response helper
+// Standard JSON response
 // ---------------------------------------------------------
 
 function jsonResponse(
