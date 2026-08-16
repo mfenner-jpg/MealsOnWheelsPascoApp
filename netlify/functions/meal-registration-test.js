@@ -84,14 +84,15 @@ export async function handler() {
     const formData =
       new URLSearchParams();
 
-    // Primary applicant
+    // =======================================================
+    // PRIMARY APPLICANT
+    // =======================================================
 
     formData.set(
       "client_name",
       "MOW App Real Form Test"
     );
 
-    // Correct HTML/Drupal date format
     formData.set(
       "dob",
       "1945-01-15"
@@ -132,9 +133,9 @@ export async function handler() {
       `mow-real-form-test-${Date.now()}@example.com`
     );
 
-    // -------------------------------------------------------
-    // Emergency contact
-    // -------------------------------------------------------
+    // =======================================================
+    // EMERGENCY CONTACT
+    // =======================================================
 
     formData.set(
       "emergency_contact",
@@ -156,9 +157,9 @@ export async function handler() {
       "emergency-test@example.com"
     );
 
-    // -------------------------------------------------------
-    // Required health questions
-    // -------------------------------------------------------
+    // =======================================================
+    // PRIMARY APPLICANT HEALTH QUESTIONS
+    // =======================================================
 
     formData.set(
       "are_you_a_diabetic_",
@@ -180,56 +181,92 @@ export async function handler() {
       "No"
     );
 
-    // -------------------------------------------------------
-    // PET TEST
-    //
-    // New radio field = YES
-    // -------------------------------------------------------
+    // =======================================================
+    // PET
+    // =======================================================
 
     formData.set(
       "do_you_own_a_pet_2",
       "Yes"
     );
 
-    /*
-     * The Drupal Build screen showed the pet-choice key as:
-     *
-     * what_pet_s_do_you_own_
-     *
-     * Because this is a CHECKBOX element, Drupal normally
-     * expects array-style submission syntax.
-     *
-     * This test selects DOG only.
-     */
-
     formData.append(
       "what_pet_s_do_you_own_[Dog]",
       "Dog"
     );
 
-    // -------------------------------------------------------
-    // Optional medical restrictions / conditions
-    // -------------------------------------------------------
+    // =======================================================
+    // OPTIONAL MEDICAL COMMENTS
+    // =======================================================
 
     formData.set(
       "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
       "MOW App integration test — no actual medical restrictions."
     );
 
-    // -------------------------------------------------------
-    // Additional household members
+    // =======================================================
+    // ADDITIONAL HOUSEHOLD MEMBER
     //
-    // Keep NO for this test.
-    // -------------------------------------------------------
+    // THIS TEST CHANGES THE ANSWER TO YES
+    // AND SELECTS 1 ADDITIONAL PERSON.
+    // =======================================================
 
     formData.set(
       "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
-      "No"
+      "Yes"
+    );
+
+    formData.set(
+      "number_of_additional_people_in_home_requiring_meal_service",
+      "1"
     );
 
     // -------------------------------------------------------
-    // Drupal hidden fields
+    // ADDITIONAL HOUSEHOLD MEMBER #1
     // -------------------------------------------------------
+
+    formData.set(
+      "client_name_add_1",
+      "MOW Test Household Member One"
+    );
+
+    formData.set(
+      "dob_add_1",
+      "1948-02-20"
+    );
+
+    formData.set(
+      "diabetic_add_1",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_nuts_add_1",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_to_seafood_add_1",
+      "No"
+    );
+
+    /*
+     * Drupal's Build screen showed the first additional
+     * member veteran key as "are_you_a_veteran_".
+     */
+    formData.set(
+      "are_you_a_veteran_",
+      "No"
+    );
+
+    formData.set(
+      "medical_restrictions_or_conditions_we_should_add_1",
+      "No additional medical restrictions for test household member."
+    );
+
+    // =======================================================
+    // DRUPAL HIDDEN FIELDS
+    // =======================================================
 
     formData.set(
       "form_build_id",
@@ -315,7 +352,7 @@ export async function handler() {
         ok: true,
 
         stage:
-          "meal-registration-submission",
+          "meal-registration-one-household-member",
 
         drupalStatus:
           submitResponse.status,
@@ -323,25 +360,25 @@ export async function handler() {
         finalUrl,
 
         message:
-          "SUCCESS — Drupal accepted the Meal Delivery Registration test submission.",
+          "SUCCESS — Drupal accepted the Meal Delivery Registration test with one additional household member.",
       });
     }
 
     // -------------------------------------------------------
-    // Diagnostic response
+    // DIAGNOSTIC
     // -------------------------------------------------------
 
     const diagnosticText =
       cleanHtml(responseText).slice(
         0,
-        3500
+        4500
       );
 
     return jsonResponse(422, {
       ok: false,
 
       stage:
-        "meal-registration-pet-medical-test",
+        "meal-registration-one-household-member-test",
 
       drupalStatus:
         submitResponse.status,
@@ -352,57 +389,35 @@ export async function handler() {
 
       validationDetected,
 
-      hiddenFields: {
-        form_build_id: true,
-        form_token:
-          Boolean(formToken),
-        form_id: true,
+      testScenario: {
+        pet: "Yes",
+        petType: "Dog",
+        additionalMealService: "Yes",
+        additionalPeople: "1",
       },
 
-      fieldsAttempted: {
-        client_name: true,
-        dob: true,
-        address: true,
-        mobile_home_park_subdivision: true,
-        city: true,
-        state: true,
-        zip_code: true,
-        primary_contact_phone: true,
-        email: true,
-
-        emergency_contact: true,
-        relationship: true,
-        home_mobile_phone_: true,
-        email_ec: true,
-
-        are_you_a_diabetic_: true,
-        are_you_allergic_to_nuts_: true,
-        are_you_allergic_to_seafood_: true,
-        are_you_a_veteran_1: true,
-
-        do_you_own_a_pet_2: true,
-        pet_test_value: "Yes",
-        pet_choice_attempted: "Dog",
-
-        medical_restrictions_tested: true,
-
-        would_anyone_else_in_your_home_like_to_be_included_in_this_meal_:
+      memberOneAttempted: {
+        client_name_add_1: true,
+        dob_add_1: true,
+        diabetic_add_1: true,
+        are_you_allergic_nuts_add_1: true,
+        are_you_allergic_to_seafood_add_1: true,
+        are_you_a_veteran_: true,
+        medical_restrictions_or_conditions_we_should_add_1:
           true,
-        additional_household_value:
-          "No",
       },
 
       diagnosticText,
 
       message:
-        "Drupal received the pet/medical test. Review diagnosticText to determine whether DOB, medical restrictions, and the conditional Dog selection were accepted.",
+        "Drupal received the one-additional-household-member test. Review diagnosticText for any remaining household-member validation errors. CAPTCHA and Signature are intentionally not included yet.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
       stage:
-        "meal-registration-pet-medical-test",
+        "meal-registration-one-household-member-test",
 
       message:
         error instanceof Error
