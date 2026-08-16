@@ -1,131 +1,227 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function DrupalConnectionTest() {
   const [status, setStatus] = useState("Ready to test.");
   const [details, setDetails] = useState("");
   const [result, setResult] = useState(null);
 
-  const [captchaQuestion, setCaptchaQuestion] = useState("");
-  const [captchaAnswer, setCaptchaAnswer] = useState("");
-  const [captchaState, setCaptchaState] = useState(null);
-  const [captchaResponseField, setCaptchaResponseField] =
-    useState("captcha_response");
+  const [signatureData, setSignatureData] = useState("");
+  const [hasSignature, setHasSignature] = useState(false);
 
-  const loadCaptcha = async () => {
-    setStatus("Loading Math CAPTCHA...");
-    setDetails("");
-    setResult(null);
+  const canvasRef = useRef(null);
+  const drawingRef = useRef(false);
+  const lastPointRef = useRef(null);
 
-    setCaptchaQuestion("");
-    setCaptchaAnswer("");
-    setCaptchaState(null);
+  // -------------------------------------------------------
+  // Prepare signature canvas
+  // -------------------------------------------------------
 
-    try {
-      const response = await fetch(
-        "/.netlify/functions/meal-registration-test",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
+  useEffect(() => {
+    const canvas = canvasRef.current;
 
-      const data = await response.json();
+    if (!canvas) {
+      return;
+    }
 
-      setResult(data);
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
 
-      if (response.ok && data.ok && data.stage === "captcha-ready") {
-        setStatus("CAPTCHA READY");
+      canvas.width = Math.floor(rect.width * ratio);
+      canvas.height = Math.floor(rect.height * ratio);
 
-        setCaptchaQuestion(data.captcha?.question || "");
-        setCaptchaState(data.state || null);
+      const ctx = canvas.getContext("2d");
 
-        setCaptchaResponseField(
-          data.captcha?.responseField || "captcha_response"
-        );
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-        setDetails(
-          "Drupal generated a fresh Math CAPTCHA. Enter the answer below, then submit it."
-        );
-      } else {
-        setStatus("FAILED");
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#111111";
+    };
 
-        setDetails(
-          data.message ||
-            `The Netlify function returned HTTP ${response.status}.`
-        );
-      }
-    } catch (error) {
-      setStatus("FAILED");
+    resizeCanvas();
 
-      setDetails(
-        error instanceof Error
-          ? error.message
-          : "The CAPTCHA challenge could not be loaded."
-      );
+    window.addEventListener("resize", resizeCanvas);
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, []);
+
+  // -------------------------------------------------------
+  // Get pointer position
+  // -------------------------------------------------------
+
+  const getPoint = (event) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  };
+
+  // -------------------------------------------------------
+  // Start drawing
+  // -------------------------------------------------------
+
+  const startDrawing = (event) => {
+    event.preventDefault();
+
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return;
+    }
+
+    canvas.setPointerCapture?.(event.pointerId);
+
+    drawingRef.current = true;
+    lastPointRef.current = getPoint(event);
+  };
+
+  // -------------------------------------------------------
+  // Draw
+  // -------------------------------------------------------
+
+  const draw = (event) => {
+    if (!drawingRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    const currentPoint = getPoint(event);
+    const previousPoint = lastPointRef.current;
+
+    if (!previousPoint) {
+      lastPointRef.current = currentPoint;
+      return;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(previousPoint.x, previousPoint.y);
+    ctx.lineTo(currentPoint.x, currentPoint.y);
+    ctx.stroke();
+
+    lastPointRef.current = currentPoint;
+
+    if (!hasSignature) {
+      setHasSignature(true);
     }
   };
 
-  const submitCaptcha = async () => {
-    if (!captchaState) {
-      setStatus("CAPTCHA NOT LOADED");
-      setDetails("Load a Math CAPTCHA challenge first.");
+  // -------------------------------------------------------
+  // Stop drawing
+  // -------------------------------------------------------
+
+  const stopDrawing = (event) => {
+    if (!drawingRef.current) {
       return;
     }
 
-    if (!captchaAnswer.trim()) {
-      setStatus("ANSWER REQUIRED");
-      setDetails("Enter the answer to the Math CAPTCHA.");
+    event.preventDefault();
+
+    drawingRef.current = false;
+    lastPointRef.current = null;
+  };
+
+  // -------------------------------------------------------
+  // Clear signature
+  // -------------------------------------------------------
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
       return;
     }
 
-    setStatus("Submitting CAPTCHA answer...");
-    setDetails("");
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    setHasSignature(false);
+    setSignatureData("");
     setResult(null);
 
-    try {
-      const response = await fetch(
-        "/.netlify/functions/meal-registration-test",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            captchaResponse: captchaAnswer.trim(),
-            captchaResponseField,
-            state: captchaState,
-          }),
-        }
+    setStatus("Signature cleared.");
+    setDetails("");
+  };
+
+  // -------------------------------------------------------
+  // Convert signature to PNG Data URL
+  // -------------------------------------------------------
+
+  const captureSignature = () => {
+    const canvas = canvasRef.current;
+
+    if (!canvas || !hasSignature) {
+      setStatus("SIGNATURE REQUIRED");
+      setDetails(
+        "Draw a signature in the box before testing it."
+      );
+      return;
+    }
+
+    const dataUrl =
+      canvas.toDataURL("image/png");
+
+    setSignatureData(dataUrl);
+
+    const prefixCorrect =
+      dataUrl.startsWith(
+        "data:image/png;base64,"
       );
 
-      const data = await response.json();
+    const approximateBytes =
+      Math.round(
+        (dataUrl.length * 3) / 4
+      );
 
-      setResult(data);
+    const diagnostic = {
+      ok: prefixCorrect,
+      stage: "signature-data-url-test",
+      signatureCreated: true,
+      prefixCorrect,
+      beginsWith:
+        dataUrl.slice(0, 30),
+      dataUrlCharacters:
+        dataUrl.length,
+      approximateBytes,
+      under500KB:
+        approximateBytes < 500 * 1024,
+      message: prefixCorrect
+        ? "Signature successfully converted to a PNG data URL."
+        : "Signature was created, but the expected PNG data URL prefix was not found.",
+    };
 
-      if (response.ok && data.ok && data.stage === "captcha-passed") {
-        setStatus("CAPTCHA PASSED");
+    setResult(diagnostic);
 
-        setDetails(
-          "Drupal accepted the Math CAPTCHA answer. Signature is now the remaining required field."
-        );
-      } else {
-        setStatus("PARTIAL / BLOCKED");
-
-        setDetails(
-          data.message ||
-            `The Netlify function returned HTTP ${response.status}.`
-        );
-      }
-    } catch (error) {
-      setStatus("FAILED");
+    if (
+      prefixCorrect &&
+      approximateBytes < 500 * 1024
+    ) {
+      setStatus("SIGNATURE FORMAT PASSED");
 
       setDetails(
-        error instanceof Error
-          ? error.message
-          : "The CAPTCHA answer could not be submitted."
+        "The test signature was successfully converted to the PNG data format Drupal expects."
+      );
+    } else {
+      setStatus("SIGNATURE FORMAT ISSUE");
+
+      setDetails(
+        "The signature was created, but its format or size needs adjustment."
       );
     }
   };
@@ -147,18 +243,20 @@ function DrupalConnectionTest() {
           background: "#ffffff",
           padding: "28px",
           borderRadius: "20px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
+          boxShadow:
+            "0 10px 30px rgba(0,0,0,0.10)",
         }}
       >
         <h1
           style={{
             marginTop: 0,
             color: "#073665",
-            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontFamily:
+              'Georgia, "Times New Roman", serif',
             fontSize: "28px",
           }}
         >
-          Drupal Math CAPTCHA Test
+          Drupal Signature Test
         </h1>
 
         <p
@@ -167,14 +265,86 @@ function DrupalConnectionTest() {
             color: "#444444",
           }}
         >
-          This temporary test loads a fresh Math CAPTCHA from the real Meal
-          Delivery Registration form. Enter the answer manually so we can
-          confirm Drupal accepts it.
+          Draw a temporary signature below. This test
+          only checks whether the app can create the PNG
+          signature format required by Drupal. Nothing is
+          submitted to the Meal Delivery Registration form
+          during this test.
         </p>
+
+        <div
+          style={{
+            marginTop: "24px",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: "800",
+              color: "#073665",
+              marginBottom: "8px",
+            }}
+          >
+            Signature
+          </div>
+
+          <div
+            style={{
+              border: "1px solid #b8c2cc",
+              borderRadius: "10px",
+              overflow: "hidden",
+              background: "#ffffff",
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              onPointerDown={startDrawing}
+              onPointerMove={draw}
+              onPointerUp={stopDrawing}
+              onPointerCancel={stopDrawing}
+              onPointerLeave={stopDrawing}
+              style={{
+                display: "block",
+                width: "100%",
+                height: "220px",
+                touchAction: "none",
+                cursor: "crosshair",
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop: "8px",
+              fontSize: "13px",
+              color: "#666666",
+            }}
+          >
+            Sign above using your mouse, finger, or stylus.
+          </div>
+        </div>
 
         <button
           type="button"
-          onClick={loadCaptcha}
+          onClick={clearSignature}
+          style={{
+            width: "100%",
+            padding: "12px 18px",
+            marginTop: "18px",
+            border: "1px solid #b8c2cc",
+            borderRadius: "10px",
+            background: "#ffffff",
+            color: "#073665",
+            fontSize: "15px",
+            fontWeight: "800",
+            cursor: "pointer",
+          }}
+        >
+          Clear Signature
+        </button>
+
+        <button
+          type="button"
+          onClick={captureSignature}
           style={{
             width: "100%",
             padding: "14px 18px",
@@ -188,90 +358,8 @@ function DrupalConnectionTest() {
             cursor: "pointer",
           }}
         >
-          Load Math CAPTCHA
+          Test Signature Format
         </button>
-
-        {captchaQuestion && (
-          <div
-            style={{
-              marginTop: "24px",
-              padding: "18px",
-              borderRadius: "12px",
-              background: "#fff7dd",
-              border: "1px solid #e2c46d",
-            }}
-          >
-            <div
-              style={{
-                color: "#073665",
-                fontWeight: "800",
-                marginBottom: "10px",
-              }}
-            >
-              Math question
-            </div>
-
-            <div
-              style={{
-                fontFamily: 'Georgia, "Times New Roman", serif',
-                fontSize: "26px",
-                color: "#222222",
-                marginBottom: "16px",
-              }}
-            >
-              {captchaQuestion}
-            </div>
-
-            <label
-              htmlFor="captcha-answer"
-              style={{
-                display: "block",
-                fontWeight: "700",
-                color: "#333333",
-                marginBottom: "8px",
-              }}
-            >
-              Your answer
-            </label>
-
-            <input
-              id="captcha-answer"
-              type="text"
-              inputMode="numeric"
-              value={captchaAnswer}
-              onChange={(event) =>
-                setCaptchaAnswer(event.target.value)
-              }
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 14px",
-                borderRadius: "8px",
-                border: "1px solid #b8c2cc",
-                fontSize: "18px",
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={submitCaptcha}
-              style={{
-                width: "100%",
-                padding: "14px 18px",
-                marginTop: "14px",
-                border: "none",
-                borderRadius: "10px",
-                background: "#0b5a94",
-                color: "#ffffff",
-                fontSize: "16px",
-                fontWeight: "800",
-                cursor: "pointer",
-              }}
-            >
-              Submit CAPTCHA Answer
-            </button>
-          </div>
-        )}
 
         <div
           style={{
@@ -321,6 +409,19 @@ function DrupalConnectionTest() {
           >
             {JSON.stringify(result, null, 2)}
           </pre>
+        )}
+
+        {signatureData && (
+          <div
+            style={{
+              marginTop: "16px",
+              fontSize: "12px",
+              color: "#666666",
+              wordBreak: "break-word",
+            }}
+          >
+            Signature data created successfully.
+          </div>
         )}
       </div>
     </div>
