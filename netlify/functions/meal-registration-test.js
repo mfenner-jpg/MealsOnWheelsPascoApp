@@ -3,11 +3,21 @@ export async function handler() {
     "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
+    // -------------------------------------------------------
+    // STEP 1
+    // Load the real Meal Delivery Registration form.
+    //
+    // IMPORTANT:
+    // This diagnostic version DOES NOT submit anything.
+    // It only reads the form HTML so we can determine the
+    // actual option values Drupal expects.
+    // -------------------------------------------------------
+
     const formResponse = await fetch(DRUPAL_FORM_URL, {
       method: "GET",
       headers: {
         Accept: "text/html",
-        "User-Agent": "MOW-Pasco-App-Meal-Registration-Test",
+        "User-Agent": "MOW-Pasco-App-Meal-Registration-Diagnostic",
       },
       redirect: "follow",
     });
@@ -24,171 +34,121 @@ export async function handler() {
       });
     }
 
+    // -------------------------------------------------------
+    // STEP 2
+    // Read Drupal's hidden form values.
+    // -------------------------------------------------------
+
     const getHiddenValue = (name) => {
       const pattern = new RegExp(
-        `name=["']${name}["'][^>]*value=["']([^"']*)["']`,
+        `name=["']${escapeRegex(name)}["'][^>]*value=["']([^"']*)["']`,
         "i"
       );
 
       const reversePattern = new RegExp(
-        `value=["']([^"']*)["'][^>]*name=["']${name}["']`,
+        `value=["']([^"']*)["'][^>]*name=["']${escapeRegex(name)}["']`,
         "i"
       );
 
-      const match = html.match(pattern) || html.match(reversePattern);
+      const match =
+        html.match(pattern) ||
+        html.match(reversePattern);
 
       return match ? match[1] : "";
     };
 
-    const formBuildId = getHiddenValue("form_build_id");
-    const formToken = getHiddenValue("form_token");
-    const formId = getHiddenValue("form_id");
+    const formBuildId =
+      getHiddenValue("form_build_id");
 
-    if (!formBuildId || !formId) {
-      return jsonResponse(502, {
-        ok: false,
-        stage: "prepare-meal-registration",
-        hiddenFields: {
-          form_build_id: Boolean(formBuildId),
-          form_token: Boolean(formToken),
-          form_id: Boolean(formId),
-        },
-        message:
-          "Netlify reached the Meal Delivery Registration form, but required Drupal hidden values could not be read.",
-      });
-    }
+    const formToken =
+      getHiddenValue("form_token");
 
-    const formData = new URLSearchParams();
+    const formId =
+      getHiddenValue("form_id");
 
-    formData.set("client_name", "MOW App Real Form Test");
-    formData.set("dob", "01/15/1945");
-    formData.set("address", "123 Test Street");
-    formData.set("mobile_home_park_subdivision", "Test Community");
-    formData.set("city", "Zephyrhills");
-    formData.set("state", "Florida");
-    formData.set("zip_code", "33542");
-    formData.set("primary_contact_phone", "813-555-0100");
+    // -------------------------------------------------------
+    // STEP 3
+    // Inspect the actual HTML input values Drupal generated
+    // for the five questions that caused the server error.
+    //
+    // We are NOT guessing Yes/No values anymore.
+    // -------------------------------------------------------
 
-    formData.set(
-      "email",
-      `mow-real-form-test-${Date.now()}@example.com`
-    );
-
-    formData.set(
-      "emergency_contact",
-      "Test Emergency Contact"
-    );
-
-    formData.set("relationship", "Friend");
-    formData.set("home_mobile_phone_", "813-555-0101");
-    formData.set("email_ec", "emergency-test@example.com");
-
-    formData.set("are_you_a_diabetic_", "No");
-    formData.set("are_you_allergic_to_nuts_", "No");
-    formData.set("are_you_allergic_to_seafood_", "No");
-    formData.set("are_you_a_veteran_1", "No");
-    formData.set("do_you_own_a_pet_", "No");
-
-    formData.set("form_build_id", formBuildId);
-
-    if (formToken) {
-      formData.set("form_token", formToken);
-    }
-
-    formData.set("form_id", formId);
-    formData.set("op", "Submit");
-
-    const submitResponse = await fetch(DRUPAL_FORM_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "text/html",
-        "User-Agent": "MOW-Pasco-App-Meal-Registration-Test",
-      },
-      body: formData.toString(),
-      redirect: "follow",
-    });
-
-    const responseText = await submitResponse.text();
-    const finalUrl = submitResponse.url || "";
-
-    const reachedConfirmation =
-      finalUrl.includes("/confirmation");
-
-    const lowerResponse = responseText.toLowerCase();
-
-    const validationIndicators = [
-      "form-item--error",
-      "messages--error",
-      "alert-danger",
-      "error-message",
-      "is required",
-      "required field",
+    const fieldsToInspect = [
+      "are_you_a_diabetic_",
+      "are_you_allergic_to_nuts_",
+      "are_you_allergic_to_seafood_",
+      "are_you_a_veteran_1",
+      "do_you_own_a_pet_",
     ];
 
-    const validationDetected =
-      validationIndicators.some((indicator) =>
-        lowerResponse.includes(indicator)
-      );
+    const fieldDefinitions = {};
 
-    if (submitResponse.ok && reachedConfirmation) {
-      return jsonResponse(200, {
-        ok: true,
-        stage: "meal-registration-submission",
-        drupalStatus: submitResponse.status,
-        finalUrl,
-        message:
-          "SUCCESS — Drupal accepted the Meal Delivery Registration test submission.",
-      });
+    for (const fieldName of fieldsToInspect) {
+      fieldDefinitions[fieldName] =
+        inspectFieldInputs(html, fieldName);
     }
 
-    // Extract useful human-readable text from Drupal's response.
-    const diagnosticText = cleanHtml(responseText).slice(0, 2500);
+    // -------------------------------------------------------
+    // STEP 4
+    // Also inspect the additional-meal-service field because
+    // it will be the next required conditional field.
+    // -------------------------------------------------------
 
-    return jsonResponse(422, {
-      ok: false,
-      stage: "meal-registration-diagnostic",
-      drupalStatus: submitResponse.status,
-      finalUrl,
-      reachedConfirmation,
-      validationDetected,
+    const additionalMealField =
+      "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_";
+
+    fieldDefinitions[additionalMealField] =
+      inspectFieldInputs(
+        html,
+        additionalMealField
+      );
+
+    // -------------------------------------------------------
+    // STEP 5
+    // Return diagnostics only.
+    //
+    // NO POST REQUEST IS MADE.
+    // NO DRUPAL SUBMISSION IS CREATED.
+    // -------------------------------------------------------
+
+    return jsonResponse(200, {
+      ok: true,
+
+      stage:
+        "meal-registration-option-inspection",
+
+      drupalStatus:
+        formResponse.status,
+
+      formUrl:
+        formResponse.url,
 
       hiddenFields: {
-        form_build_id: true,
-        form_token: Boolean(formToken),
-        form_id: true,
+        form_build_id:
+          Boolean(formBuildId),
+
+        form_token:
+          Boolean(formToken),
+
+        form_id:
+          Boolean(formId),
       },
 
-      fieldsAttempted: {
-        client_name: true,
-        dob: true,
-        address: true,
-        mobile_home_park_subdivision: true,
-        city: true,
-        state: true,
-        zip_code: true,
-        primary_contact_phone: true,
-        email: true,
-        emergency_contact: true,
-        relationship: true,
-        home_mobile_phone_: true,
-        email_ec: true,
-        are_you_a_diabetic_: true,
-        are_you_allergic_to_nuts_: true,
-        are_you_allergic_to_seafood_: true,
-        are_you_a_veteran_1: true,
-        do_you_own_a_pet_: true,
-      },
+      formId,
 
-      diagnosticText,
+      fieldDefinitions,
 
       message:
-        "Drupal rejected the test request. The diagnosticText field contains a cleaned excerpt of Drupal's response so we can identify the cause.",
+        "Diagnostic complete. No form was submitted. Review fieldDefinitions to see the exact values Drupal expects for each Yes/No field.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
-      stage: "meal-registration-test",
+
+      stage:
+        "meal-registration-option-inspection",
+
       message:
         error instanceof Error
           ? error.message
@@ -197,26 +157,111 @@ export async function handler() {
   }
 }
 
-function cleanHtml(html) {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
+
+// ---------------------------------------------------------
+// Finds all HTML <input> elements belonging to one Drupal
+// field and returns their actual type/value combinations.
+// ---------------------------------------------------------
+
+function inspectFieldInputs(html, fieldName) {
+  const escapedName =
+    escapeRegex(fieldName);
+
+  const inputPattern =
+    new RegExp(
+      `<input\\b[^>]*name=["']${escapedName}(?:\\[\\])?["'][^>]*>`,
+      "gi"
+    );
+
+  const matches =
+    html.match(inputPattern) || [];
+
+  return matches.map((tag) => {
+    return {
+      type:
+        getAttribute(tag, "type") ||
+        "text",
+
+      name:
+        getAttribute(tag, "name") ||
+        "",
+
+      value:
+        getAttribute(tag, "value") ||
+        "",
+
+      checked:
+        /\schecked(?:=["'][^"']*["'])?/i.test(
+          tag
+        ),
+    };
+  });
+}
+
+
+// ---------------------------------------------------------
+// Extract an HTML attribute from a tag.
+// ---------------------------------------------------------
+
+function getAttribute(tag, attributeName) {
+  const pattern =
+    new RegExp(
+      `${escapeRegex(attributeName)}=["']([^"']*)["']`,
+      "i"
+    );
+
+  const match =
+    tag.match(pattern);
+
+  return match
+    ? decodeHtml(match[1])
+    : "";
+}
+
+
+// ---------------------------------------------------------
+// Minimal HTML entity decoding for diagnostic values.
+// ---------------------------------------------------------
+
+function decodeHtml(value) {
+  return value
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#039;/gi, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
 }
+
+
+// ---------------------------------------------------------
+// Escape text before putting it into a RegExp.
+// ---------------------------------------------------------
+
+function escapeRegex(value) {
+  return value.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+}
+
+
+// ---------------------------------------------------------
+// Standard JSON response helper.
+// ---------------------------------------------------------
 
 function jsonResponse(statusCode, data) {
   return {
     statusCode,
+
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
+      "Content-Type":
+        "application/json",
+
+      "Cache-Control":
+        "no-store",
     },
-    body: JSON.stringify(data),
+
+    body:
+      JSON.stringify(data),
   };
 }
