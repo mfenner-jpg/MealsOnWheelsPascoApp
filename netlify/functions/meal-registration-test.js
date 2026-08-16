@@ -196,7 +196,7 @@ export async function handler() {
     );
 
     // =======================================================
-    // OPTIONAL MEDICAL COMMENTS
+    // PRIMARY OPTIONAL MEDICAL COMMENTS
     // =======================================================
 
     formData.set(
@@ -205,10 +205,9 @@ export async function handler() {
     );
 
     // =======================================================
-    // ADDITIONAL HOUSEHOLD MEMBER
+    // ADDITIONAL HOUSEHOLD MEMBERS
     //
-    // THIS TEST CHANGES THE ANSWER TO YES
-    // AND SELECTS 1 ADDITIONAL PERSON.
+    // YES — TWO additional people
     // =======================================================
 
     formData.set(
@@ -218,12 +217,12 @@ export async function handler() {
 
     formData.set(
       "number_of_additional_people_in_home_requiring_meal_service",
-      "1"
+      "2"
     );
 
-    // -------------------------------------------------------
+    // =======================================================
     // ADDITIONAL HOUSEHOLD MEMBER #1
-    // -------------------------------------------------------
+    // =======================================================
 
     formData.set(
       "client_name_add_1",
@@ -250,10 +249,6 @@ export async function handler() {
       "No"
     );
 
-    /*
-     * Drupal's Build screen showed the first additional
-     * member veteran key as "are_you_a_veteran_".
-     */
     formData.set(
       "are_you_a_veteran_",
       "No"
@@ -261,7 +256,46 @@ export async function handler() {
 
     formData.set(
       "medical_restrictions_or_conditions_we_should_add_1",
-      "No additional medical restrictions for test household member."
+      "No additional medical restrictions for test household member one."
+    );
+
+    // =======================================================
+    // ADDITIONAL HOUSEHOLD MEMBER #2
+    // =======================================================
+
+    formData.set(
+      "client_name_add_2",
+      "MOW Test Household Member Two"
+    );
+
+    formData.set(
+      "dob_add_2",
+      "1950-03-25"
+    );
+
+    formData.set(
+      "are_you_a_diabetic_add_2",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_to_nuts_add_2",
+      "No"
+    );
+
+    formData.set(
+      "are_you_allergic_to_seafood_add_2",
+      "No"
+    );
+
+    formData.set(
+      "are_you_a_veteran_2",
+      "No"
+    );
+
+    formData.set(
+      "medical_restrictions_or_conditions_we_should_add_2",
+      "No additional medical restrictions for test household member two."
     );
 
     // =======================================================
@@ -352,7 +386,7 @@ export async function handler() {
         ok: true,
 
         stage:
-          "meal-registration-one-household-member",
+          "meal-registration-two-household-members",
 
         drupalStatus:
           submitResponse.status,
@@ -360,7 +394,7 @@ export async function handler() {
         finalUrl,
 
         message:
-          "SUCCESS — Drupal accepted the Meal Delivery Registration test with one additional household member.",
+          "SUCCESS — Drupal accepted the Meal Delivery Registration test with two additional household members.",
       });
     }
 
@@ -371,14 +405,14 @@ export async function handler() {
     const diagnosticText =
       cleanHtml(responseText).slice(
         0,
-        4500
+        5000
       );
 
     return jsonResponse(422, {
       ok: false,
 
       stage:
-        "meal-registration-one-household-member-test",
+        "meal-registration-two-household-members-test",
 
       drupalStatus:
         submitResponse.status,
@@ -393,7 +427,7 @@ export async function handler() {
         pet: "Yes",
         petType: "Dog",
         additionalMealService: "Yes",
-        additionalPeople: "1",
+        additionalPeople: "2",
       },
 
       memberOneAttempted: {
@@ -407,17 +441,28 @@ export async function handler() {
           true,
       },
 
+      memberTwoAttempted: {
+        client_name_add_2: true,
+        dob_add_2: true,
+        are_you_a_diabetic_add_2: true,
+        are_you_allergic_to_nuts_add_2: true,
+        are_you_allergic_to_seafood_add_2: true,
+        are_you_a_veteran_2: true,
+        medical_restrictions_or_conditions_we_should_add_2:
+          true,
+      },
+
       diagnosticText,
 
       message:
-        "Drupal received the one-additional-household-member test. Review diagnosticText for any remaining household-member validation errors. CAPTCHA and Signature are intentionally not included yet.",
+        "Drupal received the two-additional-household-members test. Review diagnosticText for any Member #1 or Member #2 validation errors. CAPTCHA and Signature are intentionally not included yet.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
       stage:
-        "meal-registration-one-household-member-test",
+        "meal-registration-two-household-members-test",
 
       message:
         error instanceof Error
