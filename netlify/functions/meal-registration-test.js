@@ -1,6 +1,6 @@
 export async function handler() {
   const DRUPAL_FORM_URL =
-    "https://www.mealsonwheelspasco.org/form/meal_delivery_registration";
+  "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
     // -------------------------------------------------------
