@@ -3,11 +3,15 @@ export async function handler() {
     "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
+    // -------------------------------------------------------
+    // STEP 1 — Load the real Drupal form
+    // -------------------------------------------------------
+
     const formResponse = await fetch(DRUPAL_FORM_URL, {
       method: "GET",
       headers: {
         Accept: "text/html",
-        "User-Agent": "MOW-Pasco-App-Signature-Diagnostic",
+        "User-Agent": "MOW-Pasco-App-Signature-Format-Diagnostic",
       },
       redirect: "follow",
     });
@@ -17,7 +21,7 @@ export async function handler() {
     if (!formResponse.ok) {
       return jsonResponse(502, {
         ok: false,
-        stage: "load-signature-diagnostic",
+        stage: "load-signature-format-diagnostic",
         drupalStatus: formResponse.status,
         message:
           "Netlify could not load the Meal Delivery Registration form.",
@@ -25,118 +29,152 @@ export async function handler() {
     }
 
     // -------------------------------------------------------
-    // Inspect input / textarea / canvas elements related
-    // to the Drupal Signature element.
+    // STEP 2 — Find the hidden signature input
     // -------------------------------------------------------
 
-    const inputTags =
-      html.match(/<input\b[^>]*>/gi) || [];
+    const signatureTag =
+      findInputTagByName(html, "signature");
 
-    const textareaTags =
-      html.match(/<textarea\b[^>]*>[\s\S]*?<\/textarea>/gi) || [];
-
-    const canvasTags =
-      html.match(/<canvas\b[^>]*>/gi) || [];
-
-    const signatureInputs = inputTags
-      .map((tag) => ({
-        tagType: "input",
-        type: getAttribute(tag, "type"),
-        name: getAttribute(tag, "name"),
-        value: getAttribute(tag, "value"),
-        id: getAttribute(tag, "id"),
-        className: getAttribute(tag, "class"),
-      }))
-      .filter((item) => {
-        const combined =
-          `${item.name} ${item.id} ${item.className}`.toLowerCase();
-
-        return combined.includes("signature");
-      });
-
-    const signatureTextareas = textareaTags
-      .map((tag) => ({
-        tagType: "textarea",
-        name: getAttribute(tag, "name"),
-        id: getAttribute(tag, "id"),
-        className: getAttribute(tag, "class"),
-        value: getTextareaValue(tag),
-      }))
-      .filter((item) => {
-        const combined =
-          `${item.name} ${item.id} ${item.className}`.toLowerCase();
-
-        return combined.includes("signature");
-      });
-
-    const signatureCanvases = canvasTags
-      .map((tag) => ({
-        tagType: "canvas",
-        id: getAttribute(tag, "id"),
-        className: getAttribute(tag, "class"),
-        width: getAttribute(tag, "width"),
-        height: getAttribute(tag, "height"),
-      }))
-      .filter((item) => {
-        const combined =
-          `${item.id} ${item.className}`.toLowerCase();
-
-        return combined.includes("signature");
-      });
+    const signatureField = signatureTag
+      ? {
+          type: getAttribute(signatureTag, "type"),
+          name: getAttribute(signatureTag, "name"),
+          value: getAttribute(signatureTag, "value"),
+          id: getAttribute(signatureTag, "id"),
+          className: getAttribute(signatureTag, "class"),
+          dataAttributes: getDataAttributes(signatureTag),
+        }
+      : null;
 
     // -------------------------------------------------------
-    // Capture readable text around "Signature"
+    // STEP 3 — Find inline script blocks that mention
+    // signature / webform-signature / SignaturePad
     // -------------------------------------------------------
 
-    const cleanText =
-      cleanHtml(html);
+    const scriptBlocks =
+      html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) || [];
 
-    const lowerText =
-      cleanText.toLowerCase();
+    const signatureScripts = scriptBlocks
+      .map((script) => cleanScriptTag(script))
+      .filter((script) => {
+        const lower = script.toLowerCase();
 
-    const signaturePosition =
-      lowerText.lastIndexOf("signature");
-
-    let signatureText = "";
-
-    if (signaturePosition !== -1) {
-      signatureText =
-        cleanText.slice(
-          Math.max(0, signaturePosition - 250),
-          signaturePosition + 700
+        return (
+          lower.includes("signature") ||
+          lower.includes("webform-signature") ||
+          lower.includes("signaturepad") ||
+          lower.includes("signature_pad")
         );
+      })
+      .map((script) => script.slice(0, 5000));
+
+    // -------------------------------------------------------
+    // STEP 4 — Find JS/CSS asset references related to
+    // signature functionality
+    // -------------------------------------------------------
+
+    const externalScriptTags =
+      html.match(/<script\b[^>]*src=["'][^"']+["'][^>]*><\/script>/gi) || [];
+
+    const signatureScriptUrls = externalScriptTags
+      .map((tag) => getAttribute(tag, "src"))
+      .filter((src) => {
+        const lower = src.toLowerCase();
+
+        return (
+          lower.includes("signature") ||
+          lower.includes("webform")
+        );
+      });
+
+    const linkTags =
+      html.match(/<link\b[^>]*href=["'][^"']+["'][^>]*>/gi) || [];
+
+    const signatureStyleUrls = linkTags
+      .map((tag) => getAttribute(tag, "href"))
+      .filter((href) => {
+        const lower = href.toLowerCase();
+
+        return (
+          lower.includes("signature") ||
+          lower.includes("webform")
+        );
+      });
+
+    // -------------------------------------------------------
+    // STEP 5 — Search raw HTML around the signature field
+    // -------------------------------------------------------
+
+    const signatureHtmlContext =
+      extractContext(
+        html,
+        'name="signature"',
+        1800
+      ) ||
+      extractContext(
+        html,
+        "webform-signature",
+        1800
+      );
+
+    // -------------------------------------------------------
+    // STEP 6 — Look for likely serialized value formats
+    // mentioned in the page
+    // -------------------------------------------------------
+
+    const formatHints = [];
+
+    const lowerHtml = html.toLowerCase();
+
+    const hints = [
+      "data:image/png;base64",
+      "data:image/jpeg;base64",
+      "data:image/svg+xml",
+      "todataurl",
+      "toDataURL",
+      "json.stringify",
+      "signaturepad",
+      "signature_pad",
+      "webform-signature",
+    ];
+
+    for (const hint of hints) {
+      if (lowerHtml.includes(hint.toLowerCase())) {
+        formatHints.push(hint);
+      }
     }
 
     // -------------------------------------------------------
-    // Return inspection only.
+    // STEP 7 — Return inspection only
     // -------------------------------------------------------
 
     return jsonResponse(200, {
       ok: true,
 
-      stage:
-        "signature-inspection",
+      stage: "signature-value-format-inspection",
 
-      drupalStatus:
-        formResponse.status,
+      drupalStatus: formResponse.status,
 
-      signatureText,
+      signatureField,
 
-      signatureInputs,
+      formatHints,
 
-      signatureTextareas,
+      signatureHtmlContext,
 
-      signatureCanvases,
+      signatureScripts,
+
+      signatureScriptUrls,
+
+      signatureStyleUrls,
 
       message:
-        "Signature inspection complete. No form was submitted. Review the signature fields to determine exactly what Drupal expects.",
+        "Signature value-format inspection complete. No form was submitted. Review the signature field, format hints, and signature-related scripts to determine what Drupal expects.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
-      stage:
-        "signature-inspection",
+      stage: "signature-value-format-inspection",
 
       message:
         error instanceof Error
@@ -148,7 +186,28 @@ export async function handler() {
 
 
 // ---------------------------------------------------------
-// Read a normal HTML attribute
+// Find an input tag by NAME
+// ---------------------------------------------------------
+
+function findInputTagByName(
+  html,
+  name
+) {
+  const escaped =
+    escapeRegex(name);
+
+  const pattern =
+    new RegExp(
+      `<input\\b[^>]*name=["']${escaped}["'][^>]*>`,
+      "i"
+    );
+
+  return html.match(pattern)?.[0] || "";
+}
+
+
+// ---------------------------------------------------------
+// Extract normal HTML attribute
 // ---------------------------------------------------------
 
 function getAttribute(
@@ -171,45 +230,73 @@ function getAttribute(
 
 
 // ---------------------------------------------------------
-// Read textarea contents
+// Extract data-* attributes from an HTML tag
 // ---------------------------------------------------------
 
-function getTextareaValue(tag) {
-  const match =
-    tag.match(
-      /<textarea\b[^>]*>([\s\S]*?)<\/textarea>/i
+function getDataAttributes(tag) {
+  const result = {};
+
+  const matches =
+    tag.matchAll(
+      /\s(data-[a-z0-9_-]+)=["']([^"']*)["']/gi
     );
 
-  return match
-    ? decodeHtml(match[1].trim())
-    : "";
+  for (const match of matches) {
+    result[match[1]] =
+      decodeHtml(match[2]);
+  }
+
+  return result;
 }
 
 
 // ---------------------------------------------------------
-// Clean Drupal HTML for readable diagnostic text
+// Remove <script> wrapper but preserve JS text
 // ---------------------------------------------------------
 
-function cleanHtml(html) {
-  return html
+function cleanScriptTag(script) {
+  return script
     .replace(
-      /<script[\s\S]*?<\/script>/gi,
-      " "
+      /^<script\b[^>]*>/i,
+      ""
     )
     .replace(
-      /<style[\s\S]*?<\/style>/gi,
-      " "
+      /<\/script>$/i,
+      ""
     )
-    .replace(
-      /<[^>]+>/g,
-      " "
-    )
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#039;/gi, "'")
-    .replace(/\s+/g, " ")
     .trim();
+}
+
+
+// ---------------------------------------------------------
+// Extract raw HTML context around a search phrase
+// ---------------------------------------------------------
+
+function extractContext(
+  html,
+  searchText,
+  radius
+) {
+  const lowerHtml =
+    html.toLowerCase();
+
+  const lowerSearch =
+    searchText.toLowerCase();
+
+  const position =
+    lowerHtml.indexOf(lowerSearch);
+
+  if (position === -1) {
+    return "";
+  }
+
+  return html.slice(
+    Math.max(0, position - radius),
+    Math.min(
+      html.length,
+      position + searchText.length + radius
+    )
+  );
 }
 
 
