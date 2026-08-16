@@ -3,15 +3,11 @@ export async function handler() {
     "https://www.mealsonwheelspasco.org/webform/meal_delivery_registration";
 
   try {
-    // -------------------------------------------------------
-    // STEP 1 — Load Drupal form
-    // -------------------------------------------------------
-
     const formResponse = await fetch(DRUPAL_FORM_URL, {
       method: "GET",
       headers: {
         Accept: "text/html",
-        "User-Agent": "MOW-Pasco-App-Meal-Registration-Test",
+        "User-Agent": "MOW-Pasco-App-Captcha-Diagnostic",
       },
       redirect: "follow",
     });
@@ -23,446 +19,91 @@ export async function handler() {
         ok: false,
         stage: "load-meal-registration-form",
         drupalStatus: formResponse.status,
-        message:
-          "Netlify could not load the Meal Delivery Registration form from Drupal.",
+        message: "Could not load the Drupal Meal Delivery Registration form.",
       });
     }
 
-    // -------------------------------------------------------
-    // STEP 2 — Read Drupal hidden fields
-    // -------------------------------------------------------
-
-    const getHiddenValue = (name) => {
-      const escapedName = escapeRegex(name);
-
-      const pattern = new RegExp(
-        `name=["']${escapedName}["'][^>]*value=["']([^"']*)["']`,
-        "i"
-      );
-
-      const reversePattern = new RegExp(
-        `value=["']([^"']*)["'][^>]*name=["']${escapedName}["']`,
-        "i"
-      );
-
-      const match =
-        html.match(pattern) ||
-        html.match(reversePattern);
-
-      return match ? match[1] : "";
-    };
-
-    const formBuildId =
-      getHiddenValue("form_build_id");
-
-    const formToken =
-      getHiddenValue("form_token");
-
-    const formId =
-      getHiddenValue("form_id");
-
-    if (!formBuildId || !formId) {
-      return jsonResponse(502, {
-        ok: false,
-        stage: "prepare-meal-registration",
-
-        hiddenFields: {
-          form_build_id: Boolean(formBuildId),
-          form_token: Boolean(formToken),
-          form_id: Boolean(formId),
-        },
-
-        message:
-          "Netlify reached the Meal Delivery Registration form, but required Drupal hidden values could not be read.",
-      });
-    }
-
-    // -------------------------------------------------------
-    // STEP 3 — Controlled test application
-    // -------------------------------------------------------
-
-    const formData =
-      new URLSearchParams();
-
-    // =======================================================
-    // PRIMARY APPLICANT
-    // =======================================================
-
-    formData.set(
-      "client_name",
-      "MOW App Real Form Test"
-    );
-
-    formData.set(
-      "dob",
-      "1945-01-15"
-    );
-
-    formData.set(
-      "address",
-      "123 Test Street"
-    );
-
-    formData.set(
-      "mobile_home_park_subdivision",
-      "Test Community"
-    );
-
-    formData.set(
-      "city",
-      "Zephyrhills"
-    );
-
-    formData.set(
-      "state",
-      "Florida"
-    );
-
-    formData.set(
-      "zip_code",
-      "33542"
-    );
-
-    formData.set(
-      "primary_contact_phone",
-      "813-555-0100"
-    );
-
-    formData.set(
-      "email",
-      `mow-real-form-test-${Date.now()}@example.com`
-    );
-
-    // =======================================================
-    // EMERGENCY CONTACT
-    // =======================================================
-
-    formData.set(
-      "emergency_contact",
-      "Test Emergency Contact"
-    );
-
-    formData.set(
-      "relationship",
-      "Friend"
-    );
-
-    formData.set(
-      "home_mobile_phone_",
-      "813-555-0101"
-    );
-
-    formData.set(
-      "email_ec",
-      "emergency-test@example.com"
-    );
-
-    // =======================================================
-    // PRIMARY APPLICANT HEALTH QUESTIONS
-    // =======================================================
-
-    formData.set(
-      "are_you_a_diabetic_",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_to_nuts_",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_to_seafood_",
-      "No"
-    );
-
-    formData.set(
-      "are_you_a_veteran_1",
-      "No"
-    );
-
-    // =======================================================
-    // PET
-    // =======================================================
-
-    formData.set(
-      "do_you_own_a_pet_2",
-      "Yes"
-    );
-
-    formData.append(
-      "what_pet_s_do_you_own_[Dog]",
-      "Dog"
-    );
-
-    // =======================================================
-    // PRIMARY OPTIONAL MEDICAL COMMENTS
-    // =======================================================
-
-    formData.set(
-      "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
-      "MOW App integration test — no actual medical restrictions."
-    );
-
-    // =======================================================
-    // ADDITIONAL HOUSEHOLD MEMBERS
-    //
-    // YES — TWO additional people
-    // =======================================================
-
-    formData.set(
-      "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
-      "Yes"
-    );
-
-    formData.set(
-      "number_of_additional_people_in_home_requiring_meal_service",
-      "2"
-    );
-
-    // =======================================================
-    // ADDITIONAL HOUSEHOLD MEMBER #1
-    // =======================================================
-
-    formData.set(
-      "client_name_add_1",
-      "MOW Test Household Member One"
-    );
-
-    formData.set(
-      "dob_add_1",
-      "1948-02-20"
-    );
-
-    formData.set(
-      "diabetic_add_1",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_nuts_add_1",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_to_seafood_add_1",
-      "No"
-    );
-
-    formData.set(
-      "are_you_a_veteran_",
-      "No"
-    );
-
-    formData.set(
-      "medical_restrictions_or_conditions_we_should_add_1",
-      "No additional medical restrictions for test household member one."
-    );
-
-    // =======================================================
-    // ADDITIONAL HOUSEHOLD MEMBER #2
-    // =======================================================
-
-    formData.set(
-      "client_name_add_2",
-      "MOW Test Household Member Two"
-    );
-
-    formData.set(
-      "dob_add_2",
-      "1950-03-25"
-    );
-
-    formData.set(
-      "are_you_a_diabetic_add_2",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_to_nuts_add_2",
-      "No"
-    );
-
-    formData.set(
-      "are_you_allergic_to_seafood_add_2",
-      "No"
-    );
-
-    formData.set(
-      "are_you_a_veteran_2",
-      "No"
-    );
-
-    formData.set(
-      "medical_restrictions_or_conditions_we_should_add_2",
-      "No additional medical restrictions for test household member two."
-    );
-
-    // =======================================================
-    // DRUPAL HIDDEN FIELDS
-    // =======================================================
-
-    formData.set(
-      "form_build_id",
-      formBuildId
-    );
-
-    if (formToken) {
-      formData.set(
-        "form_token",
-        formToken
-      );
-    }
-
-    formData.set(
-      "form_id",
-      formId
-    );
-
-    formData.set(
-      "op",
-      "Submit"
-    );
-
-    // -------------------------------------------------------
-    // STEP 4 — Submit to Drupal
-    // -------------------------------------------------------
-
-    const submitResponse =
-      await fetch(DRUPAL_FORM_URL, {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-
-          Accept: "text/html",
-
-          "User-Agent":
-            "MOW-Pasco-App-Meal-Registration-Test",
-        },
-
-        body: formData.toString(),
-
-        redirect: "follow",
+    // Find input elements that appear related to CAPTCHA.
+    const inputTags =
+      html.match(/<input\b[^>]*>/gi) || [];
+
+    const captchaInputs = inputTags
+      .map((tag) => ({
+        type: getAttribute(tag, "type"),
+        name: getAttribute(tag, "name"),
+        value: getAttribute(tag, "value"),
+        id: getAttribute(tag, "id"),
+      }))
+      .filter((item) => {
+        const combined =
+          `${item.name} ${item.id} ${item.type}`.toLowerCase();
+
+        return (
+          combined.includes("captcha") ||
+          combined.includes("math")
+        );
       });
 
-    const responseText =
-      await submitResponse.text();
+    // Grab readable text around the words "Math question".
+    const cleanText = cleanHtml(html);
 
-    const finalUrl =
-      submitResponse.url || "";
+    const lowerText =
+      cleanText.toLowerCase();
 
-    const reachedConfirmation =
-      finalUrl.includes("/confirmation");
+    const mathPosition =
+      lowerText.indexOf("math question");
 
-    const lowerResponse =
-      responseText.toLowerCase();
+    let captchaText = "";
 
-    const validationIndicators = [
-      "form-item--error",
-      "messages--error",
-      "alert-danger",
-      "error-message",
-      "is required",
-      "required field",
-    ];
-
-    const validationDetected =
-      validationIndicators.some(
-        (indicator) =>
-          lowerResponse.includes(indicator)
-      );
-
-    // -------------------------------------------------------
-    // SUCCESS
-    // -------------------------------------------------------
-
-    if (
-      submitResponse.ok &&
-      reachedConfirmation
-    ) {
-      return jsonResponse(200, {
-        ok: true,
-
-        stage:
-          "meal-registration-two-household-members",
-
-        drupalStatus:
-          submitResponse.status,
-
-        finalUrl,
-
-        message:
-          "SUCCESS — Drupal accepted the Meal Delivery Registration test with two additional household members.",
-      });
+    if (mathPosition !== -1) {
+      captchaText =
+        cleanText.slice(
+          Math.max(0, mathPosition - 150),
+          mathPosition + 500
+        );
     }
 
-    // -------------------------------------------------------
-    // DIAGNOSTIC
-    // -------------------------------------------------------
+    // Also inspect all hidden fields containing captcha-related names.
+    const hiddenCaptchaFields =
+      inputTags
+        .map((tag) => ({
+          type: getAttribute(tag, "type"),
+          name: getAttribute(tag, "name"),
+          value: getAttribute(tag, "value"),
+          id: getAttribute(tag, "id"),
+        }))
+        .filter((item) => {
+          const combined =
+            `${item.name} ${item.id}`.toLowerCase();
 
-    const diagnosticText =
-      cleanHtml(responseText).slice(
-        0,
-        5000
-      );
+          return (
+            item.type === "hidden" &&
+            combined.includes("captcha")
+          );
+        });
 
-    return jsonResponse(422, {
-      ok: false,
+    return jsonResponse(200, {
+      ok: true,
 
-      stage:
-        "meal-registration-two-household-members-test",
+      stage: "math-captcha-inspection",
 
       drupalStatus:
-        submitResponse.status,
+        formResponse.status,
 
-      finalUrl,
+      captchaText,
 
-      reachedConfirmation,
+      captchaInputs,
 
-      validationDetected,
-
-      testScenario: {
-        pet: "Yes",
-        petType: "Dog",
-        additionalMealService: "Yes",
-        additionalPeople: "2",
-      },
-
-      memberOneAttempted: {
-        client_name_add_1: true,
-        dob_add_1: true,
-        diabetic_add_1: true,
-        are_you_allergic_nuts_add_1: true,
-        are_you_allergic_to_seafood_add_1: true,
-        are_you_a_veteran_: true,
-        medical_restrictions_or_conditions_we_should_add_1:
-          true,
-      },
-
-      memberTwoAttempted: {
-        client_name_add_2: true,
-        dob_add_2: true,
-        are_you_a_diabetic_add_2: true,
-        are_you_allergic_to_nuts_add_2: true,
-        are_you_allergic_to_seafood_add_2: true,
-        are_you_a_veteran_2: true,
-        medical_restrictions_or_conditions_we_should_add_2:
-          true,
-      },
-
-      diagnosticText,
+      hiddenCaptchaFields,
 
       message:
-        "Drupal received the two-additional-household-members test. Review diagnosticText for any Member #1 or Member #2 validation errors. CAPTCHA and Signature are intentionally not included yet.",
+        "Inspection complete. No form was submitted. Use these results to identify the Drupal Math CAPTCHA challenge and response field.",
     });
   } catch (error) {
     return jsonResponse(500, {
       ok: false,
 
-      stage:
-        "meal-registration-two-household-members-test",
+      stage: "math-captcha-inspection",
 
       message:
         error instanceof Error
@@ -472,10 +113,20 @@ export async function handler() {
   }
 }
 
+function getAttribute(tag, attributeName) {
+  const pattern =
+    new RegExp(
+      `${escapeRegex(attributeName)}=["']([^"']*)["']`,
+      "i"
+    );
 
-// ---------------------------------------------------------
-// Clean Drupal HTML for readable diagnostics
-// ---------------------------------------------------------
+  const match =
+    tag.match(pattern);
+
+  return match
+    ? decodeHtml(match[1])
+    : "";
+}
 
 function cleanHtml(html) {
   return html
@@ -499,10 +150,14 @@ function cleanHtml(html) {
     .trim();
 }
 
-
-// ---------------------------------------------------------
-// Escape text used inside RegExp
-// ---------------------------------------------------------
+function decodeHtml(value) {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
 
 function escapeRegex(value) {
   return value.replace(
@@ -510,11 +165,6 @@ function escapeRegex(value) {
     "\\$&"
   );
 }
-
-
-// ---------------------------------------------------------
-// Standard JSON response
-// ---------------------------------------------------------
 
 function jsonResponse(
   statusCode,
