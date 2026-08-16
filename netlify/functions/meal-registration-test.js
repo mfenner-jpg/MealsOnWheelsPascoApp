@@ -4,9 +4,7 @@ export async function handler(event) {
 
   try {
     // =======================================================
-    // GET
-    // Load fresh Drupal form + CAPTCHA challenge
-    // Nothing is submitted during GET.
+    // GET — load fresh Drupal form + CAPTCHA
     // =======================================================
 
     if (!event.httpMethod || event.httpMethod === "GET") {
@@ -14,7 +12,7 @@ export async function handler(event) {
         method: "GET",
         headers: {
           Accept: "text/html",
-          "User-Agent": "MOW-Pasco-App-Full-Integration-Test",
+          "User-Agent": "MOW-Pasco-App-Final-Conditional-Test",
         },
         redirect: "follow",
       });
@@ -24,7 +22,7 @@ export async function handler(event) {
       if (!formResponse.ok) {
         return jsonResponse(502, {
           ok: false,
-          stage: "load-full-test",
+          stage: "load-final-conditional-test",
           drupalStatus: formResponse.status,
           message:
             "Netlify could not load the Meal Delivery Registration form.",
@@ -64,7 +62,7 @@ export async function handler(event) {
       ) {
         return jsonResponse(502, {
           ok: false,
-          stage: "prepare-full-test",
+          stage: "prepare-final-conditional-test",
 
           found: {
             form_build_id: Boolean(formBuildId),
@@ -76,14 +74,14 @@ export async function handler(event) {
           },
 
           message:
-            "Drupal loaded, but one or more values required for the full test could not be read.",
+            "Drupal loaded, but one or more values required for the final conditional test could not be read.",
         });
       }
 
       return jsonResponse(200, {
         ok: true,
 
-        stage: "full-test-ready",
+        stage: "final-conditional-test-ready",
 
         captcha: {
           question: captchaQuestion,
@@ -99,13 +97,12 @@ export async function handler(event) {
         },
 
         message:
-          "Full integration test is ready. Answer the CAPTCHA and provide a signature before submitting.",
+          "Final conditional test is ready. Answer the CAPTCHA and provide a signature before submitting.",
       });
     }
 
     // =======================================================
-    // POST
-    // Submit the complete TEST registration
+    // POST — submit complete TEST record with 2 members
     // =======================================================
 
     if (event.httpMethod === "POST") {
@@ -117,9 +114,9 @@ export async function handler(event) {
       } catch {
         return jsonResponse(400, {
           ok: false,
-          stage: "read-full-test-request",
+          stage: "read-final-conditional-request",
           message:
-            "The full integration test request was not valid JSON.",
+            "The final conditional test request was not valid JSON.",
         });
       }
 
@@ -140,14 +137,12 @@ export async function handler(event) {
       ) {
         return jsonResponse(400, {
           ok: false,
-          stage: "validate-full-test-input",
+          stage: "validate-final-conditional-input",
           message:
             "CAPTCHA answer, signature, or Drupal form state is missing.",
         });
       }
 
-      // Signature must be the PNG data URL format
-      // already proven by our signature test.
       if (
         !signature.startsWith(
           "data:image/png;base64,"
@@ -155,7 +150,7 @@ export async function handler(event) {
       ) {
         return jsonResponse(400, {
           ok: false,
-          stage: "validate-signature",
+          stage: "validate-final-conditional-signature",
           message:
             "The signature is not in the PNG data URL format Drupal expects.",
         });
@@ -165,12 +160,12 @@ export async function handler(event) {
         new URLSearchParams();
 
       // =====================================================
-      // PRIMARY CLIENT — CLEARLY MARKED TEST
-      // =====================================================
+      // PRIMARY CLIENT — TEST
+      // =======================================================
 
       formData.set(
         "client_name",
-        "TEST - MOW APP INTEGRATION"
+        "TEST - MOW APP CONDITIONAL"
       );
 
       formData.set(
@@ -210,12 +205,12 @@ export async function handler(event) {
 
       formData.set(
         "email",
-        `mow-app-integration-test-${Date.now()}@example.com`
+        `mow-app-conditional-test-${Date.now()}@example.com`
       );
 
       // =====================================================
-      // EMERGENCY CONTACT — CLEARLY MARKED TEST
-      // =====================================================
+      // EMERGENCY CONTACT — TEST
+      // =======================================================
 
       formData.set(
         "emergency_contact",
@@ -238,8 +233,8 @@ export async function handler(event) {
       );
 
       // =====================================================
-      // HEALTH QUESTIONS
-      // =====================================================
+      // PRIMARY HEALTH QUESTIONS
+      // =======================================================
 
       formData.set(
         "are_you_a_diabetic_",
@@ -262,9 +257,8 @@ export async function handler(event) {
       );
 
       // =====================================================
-      // PET
-      // Keep this branch simple but previously proven.
-      // =====================================================
+      // PET CONDITIONAL BRANCH
+      // =======================================================
 
       formData.set(
         "do_you_own_a_pet_2",
@@ -277,31 +271,109 @@ export async function handler(event) {
       );
 
       // =====================================================
-      // OPTIONAL MEDICAL COMMENTS
-      // =====================================================
+      // PRIMARY MEDICAL COMMENTS
+      // =======================================================
 
       formData.set(
         "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
-        "TEST SUBMISSION - DELETE AFTER MOW APP INTEGRATION TESTING."
+        "TEST SUBMISSION - FINAL CONDITIONAL INTEGRATION TEST."
       );
 
       // =====================================================
-      // ADDITIONAL HOUSEHOLD MEMBER
-      //
-      // Keep NO for our first complete submission.
-      // The 1-person and 2-person branches were already
-      // separately validated.
-      // =====================================================
+      // ADDITIONAL HOUSEHOLD MEMBER CONTROL
+      // =======================================================
 
       formData.set(
         "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
+        "Yes"
+      );
+
+      formData.set(
+        "number_of_additional_people_in_home_requiring_meal_service",
+        "2"
+      );
+
+      // =====================================================
+      // HOUSEHOLD MEMBER #1 — TEST
+      // =======================================================
+
+      formData.set(
+        "client_name_add_1",
+        "TEST HOUSEHOLD MEMBER 1"
+      );
+
+      formData.set(
+        "dob_add_1",
+        "1948-02-20"
+      );
+
+      formData.set(
+        "diabetic_add_1",
         "No"
+      );
+
+      formData.set(
+        "are_you_allergic_nuts_add_1",
+        "No"
+      );
+
+      formData.set(
+        "are_you_allergic_to_seafood_add_1",
+        "No"
+      );
+
+      formData.set(
+        "are_you_a_veteran_",
+        "No"
+      );
+
+      formData.set(
+        "medical_restrictions_or_conditions_we_should_add_1",
+        "TEST HOUSEHOLD MEMBER 1 - NO ACTUAL MEDICAL RESTRICTIONS."
+      );
+
+      // =====================================================
+      // HOUSEHOLD MEMBER #2 — TEST
+      // =======================================================
+
+      formData.set(
+        "client_name_add_2",
+        "TEST HOUSEHOLD MEMBER 2"
+      );
+
+      formData.set(
+        "dob_add_2",
+        "1950-03-25"
+      );
+
+      formData.set(
+        "are_you_a_diabetic_add_2",
+        "No"
+      );
+
+      formData.set(
+        "are_you_allergic_to_nuts_add_2",
+        "No"
+      );
+
+      formData.set(
+        "are_you_allergic_to_seafood_add_2",
+        "No"
+      );
+
+      formData.set(
+        "are_you_a_veteran_2",
+        "No"
+      );
+
+      formData.set(
+        "medical_restrictions_or_conditions_we_should_add_2",
+        "TEST HOUSEHOLD MEMBER 2 - NO ACTUAL MEDICAL RESTRICTIONS."
       );
 
       // =====================================================
       // CAPTCHA
-      // User manually answered this challenge.
-      // =====================================================
+      // =======================================================
 
       formData.set(
         "captcha_sid",
@@ -321,7 +393,7 @@ export async function handler(event) {
 
       // =====================================================
       // SIGNATURE
-      // =====================================================
+      // =======================================================
 
       formData.set(
         "signature",
@@ -330,7 +402,7 @@ export async function handler(event) {
 
       // =====================================================
       // DRUPAL FORM STATE
-      // =====================================================
+      // =======================================================
 
       formData.set(
         "form_build_id",
@@ -355,8 +427,8 @@ export async function handler(event) {
       );
 
       // =====================================================
-      // SUBMIT TO REAL DRUPAL WEBFORM
-      // =====================================================
+      // SUBMIT
+      // =======================================================
 
       const submitResponse =
         await fetch(DRUPAL_FORM_URL, {
@@ -369,7 +441,7 @@ export async function handler(event) {
             Accept: "text/html",
 
             "User-Agent":
-              "MOW-Pasco-App-Full-Integration-Test",
+              "MOW-Pasco-App-Final-Conditional-Test",
           },
 
           body:
@@ -388,36 +460,15 @@ export async function handler(event) {
       const diagnosticText =
         cleanHtml(responseText).slice(
           0,
-          5000
+          6000
         );
-
-      const lowerDiagnostic =
-        diagnosticText.toLowerCase();
 
       const reachedConfirmation =
         finalUrl.includes("/confirmation");
 
-      const mathRequired =
-        lowerDiagnostic.includes(
-          "math question field is required"
-        );
-
-      const signatureRequired =
-        lowerDiagnostic.includes(
-          "signature field is required"
-        );
-
-      const captchaInvalid =
-        lowerDiagnostic.includes("captcha") &&
-        (
-          lowerDiagnostic.includes("incorrect") ||
-          lowerDiagnostic.includes("invalid") ||
-          lowerDiagnostic.includes("wrong")
-        );
-
       // =====================================================
-      // FULL SUCCESS
-      // =====================================================
+      // SUCCESS
+      // =======================================================
 
       if (
         submitResponse.ok &&
@@ -427,7 +478,7 @@ export async function handler(event) {
           ok: true,
 
           stage:
-            "full-meal-registration-test-passed",
+            "final-conditional-test-passed",
 
           drupalStatus:
             submitResponse.status,
@@ -438,22 +489,25 @@ export async function handler(event) {
             true,
 
           testClientName:
-            "TEST - MOW APP INTEGRATION",
+            "TEST - MOW APP CONDITIONAL",
+
+          additionalMembers:
+            2,
 
           message:
-            "SUCCESS — Drupal accepted the complete MOW App Meal Delivery Registration test. A TEST submission record should now exist in Drupal.",
+            "SUCCESS — Drupal accepted the final conditional TEST with two additional household members.",
         });
       }
 
       // =====================================================
       // DIAGNOSTIC
-      // =====================================================
+      // =======================================================
 
       return jsonResponse(422, {
         ok: false,
 
         stage:
-          "full-meal-registration-test",
+          "final-conditional-test",
 
         drupalStatus:
           submitResponse.status,
@@ -462,16 +516,10 @@ export async function handler(event) {
 
         reachedConfirmation,
 
-        mathRequired,
-
-        captchaInvalid,
-
-        signatureRequired,
-
         diagnosticText,
 
         message:
-          "Drupal processed the complete TEST submission but did not reach confirmation. Review diagnosticText for the remaining validation issue.",
+          "Drupal processed the final conditional TEST but did not reach confirmation. Review diagnosticText for the remaining validation issue.",
       });
     }
 
@@ -485,7 +533,7 @@ export async function handler(event) {
       ok: false,
 
       stage:
-        "full-meal-registration-test",
+        "final-conditional-test",
 
       message:
         error instanceof Error
@@ -565,7 +613,7 @@ function findInputNameById(
 
 
 // =========================================================
-// Extract Math CAPTCHA question
+// Extract Math CAPTCHA
 // =========================================================
 
 function extractMathQuestion(
