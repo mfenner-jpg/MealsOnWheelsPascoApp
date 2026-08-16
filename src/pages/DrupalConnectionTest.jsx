@@ -164,7 +164,7 @@ function DrupalConnectionTest() {
       if (
         response.ok &&
         data.ok &&
-        data.stage === "full-test-ready"
+        data.stage === "final-conditional-test-ready"
       ) {
         setCaptchaQuestion(data.captcha?.question || "");
         setCaptchaState(data.state || null);
