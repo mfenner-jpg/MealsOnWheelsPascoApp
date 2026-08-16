@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
 function DrupalConnectionTest() {
-  const [status, setStatus] = useState("Ready to test.");
+  const [status, setStatus] = useState("Ready to begin.");
   const [details, setDetails] = useState("");
   const [result, setResult] = useState(null);
+
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captchaState, setCaptchaState] = useState(null);
+  const [captchaResponseField, setCaptchaResponseField] =
+    useState("captcha_response");
 
   const [signatureData, setSignatureData] = useState("");
   const [hasSignature, setHasSignature] = useState(false);
@@ -19,9 +25,7 @@ function DrupalConnectionTest() {
   useEffect(() => {
     const canvas = canvasRef.current;
 
-    if (!canvas) {
-      return;
-    }
+    if (!canvas) return;
 
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
@@ -33,7 +37,6 @@ function DrupalConnectionTest() {
       const ctx = canvas.getContext("2d");
 
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -50,7 +53,7 @@ function DrupalConnectionTest() {
   }, []);
 
   // -------------------------------------------------------
-  // Get pointer position
+  // Signature drawing helpers
   // -------------------------------------------------------
 
   const getPoint = (event) => {
@@ -63,18 +66,12 @@ function DrupalConnectionTest() {
     };
   };
 
-  // -------------------------------------------------------
-  // Start drawing
-  // -------------------------------------------------------
-
   const startDrawing = (event) => {
     event.preventDefault();
 
     const canvas = canvasRef.current;
 
-    if (!canvas) {
-      return;
-    }
+    if (!canvas) return;
 
     canvas.setPointerCapture?.(event.pointerId);
 
@@ -82,14 +79,8 @@ function DrupalConnectionTest() {
     lastPointRef.current = getPoint(event);
   };
 
-  // -------------------------------------------------------
-  // Draw
-  // -------------------------------------------------------
-
   const draw = (event) => {
-    if (!drawingRef.current) {
-      return;
-    }
+    if (!drawingRef.current) return;
 
     event.preventDefault();
 
@@ -116,14 +107,8 @@ function DrupalConnectionTest() {
     }
   };
 
-  // -------------------------------------------------------
-  // Stop drawing
-  // -------------------------------------------------------
-
   const stopDrawing = (event) => {
-    if (!drawingRef.current) {
-      return;
-    }
+    if (!drawingRef.current) return;
 
     event.preventDefault();
 
@@ -131,97 +116,173 @@ function DrupalConnectionTest() {
     lastPointRef.current = null;
   };
 
-  // -------------------------------------------------------
-  // Clear signature
-  // -------------------------------------------------------
-
   const clearSignature = () => {
     const canvas = canvasRef.current;
 
-    if (!canvas) {
-      return;
-    }
+    if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
 
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     setHasSignature(false);
     setSignatureData("");
-    setResult(null);
-
     setStatus("Signature cleared.");
     setDetails("");
+    setResult(null);
   };
 
   // -------------------------------------------------------
-  // Convert signature to PNG Data URL
+  // Load fresh Drupal form + CAPTCHA
   // -------------------------------------------------------
 
-  const captureSignature = () => {
-    const canvas = canvasRef.current;
+  const loadTest = async () => {
+    setStatus("Loading Drupal test...");
+    setDetails("");
+    setResult(null);
 
-    if (!canvas || !hasSignature) {
-      setStatus("SIGNATURE REQUIRED");
-      setDetails(
-        "Draw a signature in the box before testing it."
+    setCaptchaQuestion("");
+    setCaptchaAnswer("");
+    setCaptchaState(null);
+    setSignatureData("");
+
+    try {
+      const response = await fetch(
+        "/.netlify/functions/meal-registration-test",
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
+
+      const data = await response.json();
+
+      setResult(data);
+
+      if (
+        response.ok &&
+        data.ok &&
+        data.stage === "full-test-ready"
+      ) {
+        setCaptchaQuestion(data.captcha?.question || "");
+        setCaptchaState(data.state || null);
+
+        setCaptchaResponseField(
+          data.captcha?.responseField || "captcha_response"
+        );
+
+        setStatus("TEST READY");
+
+        setDetails(
+          "Drupal loaded successfully. Answer the Math CAPTCHA, draw a test signature, then submit the TEST registration."
+        );
+      } else {
+        setStatus("FAILED");
+
+        setDetails(
+          data.message ||
+            `The Netlify function returned HTTP ${response.status}.`
+        );
+      }
+    } catch (error) {
+      setStatus("FAILED");
+
+      setDetails(
+        error instanceof Error
+          ? error.message
+          : "The Drupal test could not be loaded."
+      );
+    }
+  };
+
+  // -------------------------------------------------------
+  // Submit complete TEST registration
+  // -------------------------------------------------------
+
+  const submitFullTest = async () => {
+    if (!captchaState) {
+      setStatus("TEST NOT LOADED");
+      setDetails("Click Load Full TEST first.");
       return;
     }
 
-    const dataUrl =
-      canvas.toDataURL("image/png");
+    if (!captchaAnswer.trim()) {
+      setStatus("CAPTCHA ANSWER REQUIRED");
+      setDetails("Enter the answer to the Math CAPTCHA.");
+      return;
+    }
+
+    if (!hasSignature) {
+      setStatus("SIGNATURE REQUIRED");
+      setDetails("Draw a test signature before submitting.");
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      setStatus("SIGNATURE ERROR");
+      setDetails("The signature canvas is unavailable.");
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL("image/png");
 
     setSignatureData(dataUrl);
 
-    const prefixCorrect =
-      dataUrl.startsWith(
-        "data:image/png;base64,"
+    setStatus("Submitting TEST registration...");
+    setDetails("");
+    setResult(null);
+
+    try {
+      const response = await fetch(
+        "/.netlify/functions/meal-registration-test",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            captchaResponse: captchaAnswer.trim(),
+            captchaResponseField,
+            signature: dataUrl,
+            state: captchaState,
+          }),
+        }
       );
 
-    const approximateBytes =
-      Math.round(
-        (dataUrl.length * 3) / 4
-      );
+      const data = await response.json();
 
-    const diagnostic = {
-      ok: prefixCorrect,
-      stage: "signature-data-url-test",
-      signatureCreated: true,
-      prefixCorrect,
-      beginsWith:
-        dataUrl.slice(0, 30),
-      dataUrlCharacters:
-        dataUrl.length,
-      approximateBytes,
-      under500KB:
-        approximateBytes < 500 * 1024,
-      message: prefixCorrect
-        ? "Signature successfully converted to a PNG data URL."
-        : "Signature was created, but the expected PNG data URL prefix was not found.",
-    };
+      setResult(data);
 
-    setResult(diagnostic);
+      if (
+        response.ok &&
+        data.ok &&
+        data.stage === "full-meal-registration-test-passed"
+      ) {
+        setStatus("FULL TEST PASSED");
 
-    if (
-      prefixCorrect &&
-      approximateBytes < 500 * 1024
-    ) {
-      setStatus("SIGNATURE FORMAT PASSED");
+        setDetails(
+          "Drupal accepted the complete TEST Meal Delivery Registration. A clearly marked TEST record should now exist in Drupal."
+        );
+      } else {
+        setStatus("PARTIAL / BLOCKED");
+
+        setDetails(
+          data.message ||
+            `The Netlify function returned HTTP ${response.status}.`
+        );
+      }
+    } catch (error) {
+      setStatus("FAILED");
 
       setDetails(
-        "The test signature was successfully converted to the PNG data format Drupal expects."
-      );
-    } else {
-      setStatus("SIGNATURE FORMAT ISSUE");
-
-      setDetails(
-        "The signature was created, but its format or size needs adjustment."
+        error instanceof Error
+          ? error.message
+          : "The TEST registration could not be submitted."
       );
     }
   };
@@ -243,20 +304,18 @@ function DrupalConnectionTest() {
           background: "#ffffff",
           padding: "28px",
           borderRadius: "20px",
-          boxShadow:
-            "0 10px 30px rgba(0,0,0,0.10)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
         }}
       >
         <h1
           style={{
             marginTop: 0,
             color: "#073665",
-            fontFamily:
-              'Georgia, "Times New Roman", serif',
+            fontFamily: 'Georgia, "Times New Roman", serif',
             fontSize: "28px",
           }}
         >
-          Drupal Signature Test
+          Full Drupal Registration Test
         </h1>
 
         <p
@@ -265,12 +324,106 @@ function DrupalConnectionTest() {
             color: "#444444",
           }}
         >
-          Draw a temporary signature below. This test
-          only checks whether the app can create the PNG
-          signature format required by Drupal. Nothing is
-          submitted to the Meal Delivery Registration form
-          during this test.
+          This test submits one clearly marked TEST registration to the real
+          Meal Delivery Registration form.
         </p>
+
+        <div
+          style={{
+            padding: "14px",
+            borderRadius: "10px",
+            background: "#fff7dd",
+            border: "1px solid #e2c46d",
+            color: "#5b4810",
+            lineHeight: 1.5,
+          }}
+        >
+          Drupal client name will be:
+          <br />
+          <strong>TEST - MOW APP INTEGRATION</strong>
+        </div>
+
+        <button
+          type="button"
+          onClick={loadTest}
+          style={{
+            width: "100%",
+            padding: "14px 18px",
+            marginTop: "20px",
+            border: "none",
+            borderRadius: "10px",
+            background: "#0b5a94",
+            color: "#ffffff",
+            fontSize: "16px",
+            fontWeight: "800",
+            cursor: "pointer",
+          }}
+        >
+          Load Full TEST
+        </button>
+
+        {captchaQuestion && (
+          <div
+            style={{
+              marginTop: "24px",
+              padding: "18px",
+              borderRadius: "12px",
+              background: "#fff7dd",
+              border: "1px solid #e2c46d",
+            }}
+          >
+            <div
+              style={{
+                color: "#073665",
+                fontWeight: "800",
+                marginBottom: "10px",
+              }}
+            >
+              Math question
+            </div>
+
+            <div
+              style={{
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                fontSize: "26px",
+                color: "#222222",
+                marginBottom: "16px",
+              }}
+            >
+              {captchaQuestion}
+            </div>
+
+            <label
+              htmlFor="captcha-answer"
+              style={{
+                display: "block",
+                fontWeight: "700",
+                color: "#333333",
+                marginBottom: "8px",
+              }}
+            >
+              Your answer
+            </label>
+
+            <input
+              id="captcha-answer"
+              type="text"
+              inputMode="numeric"
+              value={captchaAnswer}
+              onChange={(event) =>
+                setCaptchaAnswer(event.target.value)
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                border: "1px solid #b8c2cc",
+                fontSize: "18px",
+              }}
+            />
+          </div>
+        )}
 
         <div
           style={{
@@ -284,7 +437,7 @@ function DrupalConnectionTest() {
               marginBottom: "8px",
             }}
           >
-            Signature
+            TEST Signature
           </div>
 
           <div
@@ -319,7 +472,7 @@ function DrupalConnectionTest() {
               color: "#666666",
             }}
           >
-            Sign above using your mouse, finger, or stylus.
+            Draw any test signature above.
           </div>
         </div>
 
@@ -329,7 +482,7 @@ function DrupalConnectionTest() {
           style={{
             width: "100%",
             padding: "12px 18px",
-            marginTop: "18px",
+            marginTop: "14px",
             border: "1px solid #b8c2cc",
             borderRadius: "10px",
             background: "#ffffff",
@@ -344,7 +497,7 @@ function DrupalConnectionTest() {
 
         <button
           type="button"
-          onClick={captureSignature}
+          onClick={submitFullTest}
           style={{
             width: "100%",
             padding: "14px 18px",
@@ -358,7 +511,7 @@ function DrupalConnectionTest() {
             cursor: "pointer",
           }}
         >
-          Test Signature Format
+          Submit TEST Registration
         </button>
 
         <div
@@ -414,13 +567,12 @@ function DrupalConnectionTest() {
         {signatureData && (
           <div
             style={{
-              marginTop: "16px",
+              marginTop: "12px",
               fontSize: "12px",
-              color: "#666666",
-              wordBreak: "break-word",
+              color: "#777777",
             }}
           >
-            Signature data created successfully.
+            TEST signature data created.
           </div>
         )}
       </div>
