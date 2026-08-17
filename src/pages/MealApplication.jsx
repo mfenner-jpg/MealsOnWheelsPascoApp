@@ -110,7 +110,7 @@ function MealApplication() {
   const progress = Math.max(4, Math.round(((step + 1) / steps.length) * 100));
 
   useEffect(() => {
-    if (current.id !== "verification" || drupalState || securityLoading) {
+    if (current.id !== "verification" || drupalState) {
       return;
     }
 
@@ -165,7 +165,7 @@ function MealApplication() {
     return () => {
       cancelled = true;
     };
-  }, [current.id, drupalState, securityLoading]);
+  }, [current.id, drupalState]);
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
