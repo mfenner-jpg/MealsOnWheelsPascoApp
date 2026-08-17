@@ -11,6 +11,8 @@ import ArrangeHomeDelivery from "./pages/ArrangeHomeDelivery";
 import WeeklyMenu from "./pages/WeeklyMenu";
 import MealDeliveryFAQs from "./pages/MealDeliveryFAQs";
 import DrupalConnectionTest from "./pages/DrupalConnectionTest";
+import MealApplication from "./pages/MealApplication";
+import MealApplicationConfirmation from "./pages/MealApplicationConfirmation";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -18,14 +20,36 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AppShell>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/get-meals" element={<GetMeals />} />
+
+          <Route
+            path="/get-meals"
+            element={<GetMeals />}
+          />
+
           <Route
             path="/arrange-home-delivery"
             element={<ArrangeHomeDelivery />}
           />
-          <Route path="/meal-application" element={<ArrangeHomeDelivery />} />
-          <Route path="/weekly-menu" element={<WeeklyMenu />} />
-          <Route path="/meal-delivery-faqs" element={<MealDeliveryFAQs />} />
+
+          <Route
+            path="/meal-application"
+            element={<MealApplication />}
+          />
+
+          <Route
+            path="/meal-application-confirmation"
+            element={<MealApplicationConfirmation />}
+          />
+
+          <Route
+            path="/weekly-menu"
+            element={<WeeklyMenu />}
+          />
+
+          <Route
+            path="/meal-delivery-faqs"
+            element={<MealDeliveryFAQs />}
+          />
 
           {/* TEMPORARY DRUPAL CONNECTION TEST */}
           <Route

@@ -1,0 +1,836 @@
+:root {
+  --mow-navy: #073665;
+  --mow-blue: #0b4f87;
+  --mow-gold: #d39a1d;
+  --mow-red: #cf3333;
+  --mow-cream: #fffaf0;
+  --mow-cream-top: #fffdf8;
+  --mow-text: #243142;
+  --mow-muted: #5e6772;
+  --mow-line: #dedfdc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--mow-cream);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.meal-app {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--mow-cream);
+}
+
+/*
+  This fixed cream layer prevents the parent app shell/body from
+  showing through as a white band beneath the application.
+*/
+.meal-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 50% 34%,
+      rgba(255, 255, 255, 0.92) 0 20%,
+      rgba(255, 255, 255, 0.36) 47%,
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      var(--mow-cream-top) 0%,
+      var(--mow-cream) 100%
+    );
+}
+
+.meal-app__shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  color: var(--mow-text);
+  background: transparent;
+  box-shadow: 0 0 30px rgba(29, 42, 54, 0.12);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+/* -------------------------------------------------------
+   OPTION C PROGRESS
+   ------------------------------------------------------- */
+
+.meal-app__progress-wrap {
+  flex: 0 0 auto;
+  width: 100%;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 18px)
+    28px
+    4px;
+  background: transparent;
+}
+
+.meal-app__progress-row {
+  display: grid;
+  grid-template-columns: 18px 1fr 54px;
+  align-items: center;
+  gap: 10px;
+}
+
+.meal-app__progress-heart {
+  color: var(--mow-red);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.meal-app__progress-track {
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9e5db;
+}
+
+.meal-app__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mow-gold);
+  transition: width 0.18s ease;
+}
+
+.meal-app__progress-count {
+  color: #536173;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* -------------------------------------------------------
+   CONVERSATIONAL CONTENT
+   ------------------------------------------------------- */
+
+.meal-app__content {
+  display: flex;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 30px 28px 10px;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: transparent;
+}
+
+.meal-app__question {
+  width: 100%;
+  max-width: 344px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.meal-app__question-mark {
+  display: none;
+}
+
+.meal-app__eyebrow {
+  margin: 0 0 10px;
+  color: var(--mow-gold);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.meal-app__question h1,
+.meal-app__success h1 {
+  max-width: 320px;
+  margin: 0 auto;
+  color: var(--mow-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.meal-app__intro {
+  max-width: 285px;
+  margin: 13px auto 0;
+  color: #3e4853;
+  font-size: 13px;
+  line-height: 1.48;
+}
+
+.meal-app__answer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 24px;
+  text-align: left;
+}
+
+/* -------------------------------------------------------
+   WELCOME
+   ------------------------------------------------------- */
+
+.meal-app__shell.is-welcome .meal-app__content {
+  flex: 0 0 auto;
+  padding-top:
+    calc(env(safe-area-inset-top, 0px) + 24px);
+  padding-bottom: 0;
+}
+
+.meal-app__shell.is-welcome .meal-app__answer {
+  margin-top: 18px;
+}
+
+.meal-app__welcome-scene {
+  width: 100%;
+  margin: 30px auto 0;
+  text-align: center;
+}
+
+.meal-app__welcome-art {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center;
+
+  /*
+    Feather the artwork into the cream page so the rectangular
+    asset boundary disappears.
+  */
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0%,
+      #000 5%,
+      #000 95%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 7%,
+      #000 91%,
+      transparent 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0%,
+      #000 5%,
+      #000 95%,
+      transparent 100%
+    );
+}
+
+.meal-app__welcome-quote {
+  max-width: 305px;
+  margin: 18px auto 0;
+  padding: 0 12px;
+  border: 0;
+  color: #4d5966;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.meal-app__shell.is-welcome .meal-app__footer {
+  margin-top: 20px;
+  padding-top: 8px;
+  padding-bottom:
+    calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* -------------------------------------------------------
+   FIELDS
+   ------------------------------------------------------- */
+
+.meal-app__field {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 0 14px;
+}
+
+.meal-app__label {
+  display: block;
+  margin: 0 0 7px;
+  color: #27374a;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.meal-app__required {
+  color: var(--mow-red);
+}
+
+.meal-app__field input,
+.meal-app__textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid #d5dce2;
+  border-radius: 7px;
+  outline: none;
+  color: var(--mow-text);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(33, 47, 61, 0.035);
+  font-size: 16px;
+  touch-action: manipulation;
+}
+
+.meal-app__field input::placeholder,
+.meal-app__textarea::placeholder {
+  color: #a0a8b1;
+}
+
+.meal-app__field input:focus,
+.meal-app__textarea:focus {
+  border-color: #7ba1c2;
+  box-shadow: 0 0 0 2px rgba(11, 79, 135, 0.08);
+}
+
+.meal-app__textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.meal-app__field-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.35fr)
+    minmax(0, 0.7fr)
+    minmax(0, 0.8fr);
+  gap: 7px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.meal-app__field-row .meal-app__label {
+  font-size: 10px;
+}
+
+/* -------------------------------------------------------
+   DOB TEXT + CALENDAR PICKER
+   ------------------------------------------------------- */
+
+.meal-app__date-control {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  overflow: hidden;
+  border: 1px solid #d5dce2;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(33, 47, 61, 0.035);
+}
+
+.meal-app__date-control:focus-within {
+  border-color: #7ba1c2;
+  box-shadow: 0 0 0 2px rgba(11, 79, 135, 0.08);
+}
+
+.meal-app__date-text {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 0;
+  outline: 0;
+  color: var(--mow-text);
+  background: transparent;
+  font-size: 16px;
+}
+
+.meal-app__date-text::placeholder {
+  color: #a0a8b1;
+}
+
+.meal-app__calendar-button {
+  display: grid;
+  width: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid #e0e5e9;
+  color: var(--mow-navy);
+  background: rgba(248, 250, 252, 0.95);
+  cursor: pointer;
+}
+
+.meal-app__calendar-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.meal-app__native-date-picker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* -------------------------------------------------------
+   YES / NO
+   ------------------------------------------------------- */
+
+.meal-app__yesno {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(7, 54, 101, 0.08);
+}
+
+.meal-app__yesno .meal-app__label {
+  margin: 0;
+  font-size: 11px;
+}
+
+.meal-app__yesno-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.meal-app__yesno-buttons button {
+  min-height: 34px;
+  padding: 5px 6px;
+  border: 1px solid #d3dae0;
+  border-radius: 6px;
+  color: var(--mow-navy);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.meal-app__yesno-buttons button.is-selected {
+  border-color: var(--mow-navy);
+  color: #fff;
+  background: var(--mow-navy);
+}
+
+/* -------------------------------------------------------
+   CHOICE CARDS
+   ------------------------------------------------------- */
+
+.meal-app__choice-list {
+  display: grid;
+  gap: 9px;
+}
+
+.meal-app__choice {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 9px;
+  padding: 11px 13px;
+  border: 1px solid #d2d9e0;
+  border-radius: 8px;
+  color: var(--mow-navy);
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meal-app__choice.is-selected {
+  border: 1.5px solid var(--mow-navy);
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(7, 54, 101, 0.06);
+}
+
+.meal-app__choice-dot {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border: 1px solid #cbd4dd;
+  border-radius: 5px;
+  color: #fff;
+  background: #fff;
+  font-size: 11px;
+}
+
+.meal-app__choice.is-selected .meal-app__choice-dot {
+  border-color: var(--mow-navy);
+  background: var(--mow-navy);
+}
+
+/* -------------------------------------------------------
+   CAPTCHA
+   ------------------------------------------------------- */
+
+.meal-app__captcha {
+  padding-top: 4px;
+  text-align: center;
+}
+
+.meal-app__captcha-question {
+  margin: 10px 0 24px;
+  color: var(--mow-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 27px;
+  font-weight: 700;
+}
+
+.meal-app__captcha .meal-app__field {
+  text-align: left;
+}
+
+.meal-app__note {
+  margin: 10px 0 0;
+  color: #747e88;
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* -------------------------------------------------------
+   SIGNATURE
+   ------------------------------------------------------- */
+
+.meal-app__signature-wrap {
+  width: 100%;
+}
+
+.meal-app__signature {
+  display: block;
+  width: 100%;
+  height: 165px;
+  border: 1px solid #d2d9df;
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.meal-app__clear {
+  display: block;
+  margin: 8px 0 0 auto;
+  padding: 4px;
+  border: 0;
+  color: var(--mow-blue);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------
+   REVIEW
+   ------------------------------------------------------- */
+
+.meal-app__review-card {
+  margin-bottom: 10px;
+  padding: 13px;
+  border: 1px solid #dce1e5;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.meal-app__review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.meal-app__review-heading strong {
+  color: var(--mow-navy);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+}
+
+.meal-app__review-heading button {
+  padding: 0;
+  border: 0;
+  color: var(--mow-blue);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.meal-app__review-line {
+  padding: 2px 0;
+  color: #59636d;
+  font-size: 11px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.meal-app__review-notice {
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid #c8d9e7;
+  border-radius: 9px;
+  background: #f2f8fc;
+}
+
+.meal-app__review-notice strong {
+  color: var(--mow-navy);
+  font-size: 12px;
+}
+
+.meal-app__review-notice p {
+  margin: 6px 0 0;
+  color: #5a6670;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* -------------------------------------------------------
+   ERROR
+   ------------------------------------------------------- */
+
+.meal-app__error {
+  width: 100%;
+  max-width: 344px;
+  margin: 13px auto 0;
+  padding: 10px 11px;
+  border: 1px solid #e4b6b6;
+  border-radius: 8px;
+  color: #a42b2b;
+  background: #fff3f2;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+/* -------------------------------------------------------
+   ACTIONS
+   ------------------------------------------------------- */
+
+.meal-app__footer {
+  flex: 0 0 auto;
+  width: 100%;
+  padding:
+    8px
+    28px
+    calc(18px + env(safe-area-inset-bottom, 0px));
+  background: transparent;
+}
+
+.meal-app__primary {
+  display: flex;
+  width: 100%;
+  max-width: 344px;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 0 auto;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background:
+    linear-gradient(
+      180deg,
+      #0a4b83 0%,
+      #063665 100%
+    );
+  box-shadow:
+    0 5px 13px rgba(7, 54, 101, 0.18);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.meal-app__primary span {
+  font-family: Inter, sans-serif;
+  font-size: 17px;
+}
+
+.meal-app__back-link {
+  display: block;
+  margin: 10px auto 0;
+  padding: 5px 12px;
+  border: 0;
+  color: var(--mow-blue);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------
+   SUCCESS
+   ------------------------------------------------------- */
+
+.meal-app__success {
+  min-height: 100vh;
+  min-height: 100dvh;
+  justify-content: center;
+  padding: 46px 28px;
+  text-align: center;
+}
+
+.meal-app__heart {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  margin: 0 auto 17px;
+  border-radius: 50%;
+  color: var(--mow-gold);
+  background: #fff3cf;
+  font-size: 28px;
+}
+
+.meal-app__success p {
+  max-width: 290px;
+  margin: 11px auto 0;
+  color: #52606c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.meal-app__muted {
+  color: #7a838c !important;
+  font-size: 11px !important;
+}
+
+.meal-app__success .meal-app__primary {
+  margin-top: 24px;
+}
+
+/* -------------------------------------------------------
+   DESKTOP PREVIEW
+   ------------------------------------------------------- */
+
+@media (min-width: 540px) {
+  .meal-app {
+    padding: 24px 0;
+  }
+
+  .meal-app__shell,
+  .meal-app__success {
+    border-radius: 30px;
+  }
+}
+
+/* -------------------------------------------------------
+   SMALL PHONES
+   ------------------------------------------------------- */
+
+@media (max-width: 370px) {
+  .meal-app__content {
+    padding-right: 23px;
+    padding-left: 23px;
+  }
+
+  .meal-app__footer,
+  .meal-app__progress-wrap {
+    padding-right: 23px;
+    padding-left: 23px;
+  }
+
+  .meal-app__question h1,
+  .meal-app__success h1 {
+    font-size: 25px;
+  }
+
+  .meal-app__field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meal-app__progress-fill {
+    transition: none;
+  }
+}
+
+
+.meal-app__calendar-button {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}

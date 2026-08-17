@@ -147,9 +147,13 @@ function ArrangeHomeDelivery() {
         <div className="arrange-delivery-menu-panel">
           <nav aria-label="Get Meals navigation">
             <a href="/get-meals">Get Meals</a>
-            <a href="/arrange-home-delivery">Arrange for Home Delivery</a>
+            <a href="/arrange-home-delivery">
+              Arrange for Home Delivery
+            </a>
             <a href="/weekly-menu">View This Week&apos;s Menu</a>
-            <a href="/meal-delivery-faqs">Meal Delivery FAQs</a>
+            <a href="/meal-delivery-faqs">
+              Meal Delivery FAQs
+            </a>
           </nav>
         </div>
       )}
@@ -160,23 +164,33 @@ function ArrangeHomeDelivery() {
             src={heroImage}
             alt="Meals on Wheels volunteer delivering meals to an older adult at home"
           />
-          <div className="arrange-delivery-hero-shade" aria-hidden="true" />
+          <div
+            className="arrange-delivery-hero-shade"
+            aria-hidden="true"
+          />
         </section>
 
         <section className="arrange-delivery-intro-section">
-          <p className="arrange-delivery-eyebrow">Getting started</p>
+          <p className="arrange-delivery-eyebrow">
+            Getting started
+          </p>
+
           <h1>Arrange for Home Delivery</h1>
 
-          <div className="arrange-delivery-heart-divider" aria-hidden="true">
+          <div
+            className="arrange-delivery-heart-divider"
+            aria-hidden="true"
+          >
             <span />
             <strong>♥</strong>
             <span />
           </div>
 
           <p className="arrange-delivery-intro">
-            At Meals on Wheels Pasco, we bring nutritious meals, a friendly face,
-            and a daily wellness check directly to seniors at home—because every
-            delivery is about more than food.
+            At Meals on Wheels Pasco, we bring nutritious meals,
+            a friendly face, and a daily wellness check directly
+            to seniors at home—because every delivery is about
+            more than food.
           </p>
         </section>
 
@@ -189,46 +203,103 @@ function ArrangeHomeDelivery() {
 
           <div className="arrange-delivery-steps">
             <article className="arrange-delivery-step">
-              <div className="arrange-delivery-step-icon"><ClipboardIcon /></div>
-              <div className="arrange-delivery-step-number">1</div>
+              <div className="arrange-delivery-step-icon">
+                <ClipboardIcon />
+              </div>
+
+              <div className="arrange-delivery-step-number">
+                1
+              </div>
+
               <h3>Submit Your Form</h3>
-              <p>Tell us a little about yourself and your needs.</p>
+
+              <p>
+                Tell us a little about yourself and your needs.
+              </p>
             </article>
 
-            <div className="arrange-delivery-step-connector" aria-hidden="true" />
+            <div
+              className="arrange-delivery-step-connector"
+              aria-hidden="true"
+            />
 
             <article className="arrange-delivery-step">
-              <div className="arrange-delivery-step-icon"><PhoneIcon /></div>
-              <div className="arrange-delivery-step-number">2</div>
+              <div className="arrange-delivery-step-icon">
+                <PhoneIcon />
+              </div>
+
+              <div className="arrange-delivery-step-number">
+                2
+              </div>
+
               <h3>We&apos;ll Be in Touch</h3>
-              <p>We&apos;ll review your information and contact you within 3 business days.</p>
+
+              <p>
+                We&apos;ll review your information and contact
+                you within 3 business days.
+              </p>
             </article>
 
-            <div className="arrange-delivery-step-connector" aria-hidden="true" />
+            <div
+              className="arrange-delivery-step-connector"
+              aria-hidden="true"
+            />
 
             <article className="arrange-delivery-step">
-              <div className="arrange-delivery-step-icon"><BowlIcon /></div>
-              <div className="arrange-delivery-step-number">3</div>
+              <div className="arrange-delivery-step-icon">
+                <BowlIcon />
+              </div>
+
+              <div className="arrange-delivery-step-number">
+                3
+              </div>
+
               <h3>Meals Begin</h3>
-              <p>Once approved, we&apos;ll start delivering meals to your door.</p>
+
+              <p>
+                Once approved, we&apos;ll start delivering meals
+                to your door.
+              </p>
             </article>
           </div>
 
           <div className="arrange-delivery-alert-stack">
             <aside className="arrange-delivery-alert arrange-delivery-alert-important">
-              <div className="arrange-delivery-alert-icon" aria-hidden="true"><WarningIcon /></div>
+              <div
+                className="arrange-delivery-alert-icon"
+                aria-hidden="true"
+              >
+                <WarningIcon />
+              </div>
+
               <div className="arrange-delivery-alert-content">
-                <h2>Important — Please Read Before Applying</h2>
-                <p>This form is for our Meals on Wheels home-delivery program only.</p>
+                <h2>
+                  Important — Please Read Before Applying
+                </h2>
+
+                <p>
+                  This form is for our Meals on Wheels
+                  home-delivery program only.
+                </p>
               </div>
             </aside>
 
             <aside className="arrange-delivery-alert arrange-delivery-alert-pantry">
-              <div className="arrange-delivery-alert-icon" aria-hidden="true"><WarningIcon /></div>
+              <div
+                className="arrange-delivery-alert-icon"
+                aria-hidden="true"
+              >
+                <WarningIcon />
+              </div>
+
               <div className="arrange-delivery-alert-content">
-                <h2>Looking for Food Pantry Assistance?</h2>
+                <h2>
+                  Looking for Food Pantry Assistance?
+                </h2>
+
                 <p>
-                  If you are looking for food pantry assistance, please visit our{" "}
+                  If you are looking for food pantry assistance,
+                  please visit our{" "}
                   <a
                     href="https://www.mealsonwheelspasco.org/feeding-you-love-food-pantry-1"
                     target="_blank"
@@ -244,23 +315,59 @@ function ArrangeHomeDelivery() {
 
           <a
             className="arrange-delivery-application-button"
-            href="https://www.mealsonwheelspasco.org/get-meals-1"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/meal-application"
           >
             <PencilIcon />
-            <span>Start Meal Delivery Application</span>
+            <span>
+              Start Meal Delivery Application
+            </span>
           </a>
         </section>
       </main>
 
-      <nav className="arrange-delivery-bottom-nav" aria-label="Main navigation">
-        <a className="bottom-nav-item" href="/"><HomeIcon /><span>Home</span></a>
-        <a className="bottom-nav-item active" href="/get-meals"><MealIcon /><span>Meals</span></a>
-        <a className="bottom-nav-item" href="/food-pantry"><PantryIcon /><span>Pantry</span></a>
-        <a className="bottom-nav-item" href="/events"><CalendarIcon /><span>Events</span></a>
-        <button className="bottom-nav-item bottom-nav-button" type="button" onClick={() => setMenuOpen(true)}>
-          <MoreIcon /><span>More</span>
+      <nav
+        className="arrange-delivery-bottom-nav"
+        aria-label="Main navigation"
+      >
+        <a
+          className="bottom-nav-item"
+          href="/"
+        >
+          <HomeIcon />
+          <span>Home</span>
+        </a>
+
+        <a
+          className="bottom-nav-item active"
+          href="/get-meals"
+        >
+          <MealIcon />
+          <span>Meals</span>
+        </a>
+
+        <a
+          className="bottom-nav-item"
+          href="/food-pantry"
+        >
+          <PantryIcon />
+          <span>Pantry</span>
+        </a>
+
+        <a
+          className="bottom-nav-item"
+          href="/events"
+        >
+          <CalendarIcon />
+          <span>Events</span>
+        </a>
+
+        <button
+          className="bottom-nav-item bottom-nav-button"
+          type="button"
+          onClick={() => setMenuOpen(true)}
+        >
+          <MoreIcon />
+          <span>More</span>
         </button>
       </nav>
     </div>
