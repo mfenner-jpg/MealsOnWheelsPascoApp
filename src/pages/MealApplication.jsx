@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./MealApplication.css";
 import welcomeHouse from "../assets/meal-application-welcome-house.png";
 
@@ -51,8 +52,13 @@ function MealApplication() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
-  const [finished, setFinished] = useState(false);
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [captchaResponseField, setCaptchaResponseField] = useState("captcha_response");
+  const [drupalState, setDrupalState] = useState(null);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
+  const navigate = useNavigate();
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef(null);
@@ -102,6 +108,64 @@ function MealApplication() {
 
   const current = steps[step] || steps[0];
   const progress = Math.max(4, Math.round(((step + 1) / steps.length) * 100));
+
+  useEffect(() => {
+    if (current.id !== "verification" || drupalState || securityLoading) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSecurityQuestion = async () => {
+      setSecurityLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("/.netlify/functions/meal-registration-test", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(
+            data.message ||
+              "We could not prepare the security question. Please try again."
+          );
+        }
+
+        if (!cancelled) {
+          setCaptchaQuestion(data.captcha?.question || "");
+          setCaptchaResponseField(
+            data.captcha?.responseField || "captcha_response"
+          );
+          setDrupalState(data.state || null);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "We could not prepare the security question. Please try again."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setSecurityLoading(false);
+        }
+      }
+    };
+
+    loadSecurityQuestion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [current.id, drupalState, securityLoading]);
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -232,8 +296,18 @@ function MealApplication() {
       }
     }
 
-    if (id === "verification" && !form.captchaAnswer.trim()) {
-      return "Please solve the math verification question.";
+    if (id === "verification") {
+      if (securityLoading) {
+        return "Please wait while the security question loads.";
+      }
+
+      if (!captchaQuestion || !drupalState) {
+        return "The security question could not be prepared. Please try again.";
+      }
+
+      if (!form.captchaAnswer.trim()) {
+        return "Please solve the math verification question.";
+      }
     }
 
     if (id === "signature" && !form.signatureData) {
@@ -352,43 +426,62 @@ function MealApplication() {
     update("signatureData", "");
   };
 
-  const submitApplication = () => {
-    // Live Drupal submission will be connected after UI approval.
-    setFinished(true);
+  const submitApplication = async () => {
+    if (submitting) return;
+
+    if (!drupalState || !captchaQuestion) {
+      setError(
+        "The security verification is no longer ready. Please return to the verification step and try again."
+      );
+      return;
+    }
+
+    if (!form.signatureData) {
+      setError("Please provide a signature before submitting.");
+      return;
+    }
+
+    setSubmitting(true);
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    try {
+      const response = await fetch("/.netlify/functions/meal-registration-test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          application: form,
+          captchaResponse: form.captchaAnswer,
+          captchaResponseField,
+          signature: form.signatureData,
+          state: drupalState,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.ok && data.stage === "meal-application-submitted") {
+        navigate("/meal-application-confirmation", { replace: true });
+        return;
+      }
+
+      throw new Error(
+        data.message ||
+          "Drupal could not accept the application. Please review the form and try again."
+      );
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "We could not submit the application. Please try again."
+      );
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setSubmitting(false);
+    }
   };
-
-  if (finished) {
-    return (
-      <main className="meal-app">
-        <section className="meal-app__shell meal-app__success">
-          <div className="meal-app__heart">♡</div>
-          <div className="meal-app__eyebrow">APPLICATION REVIEW</div>
-          <h1>Thank you.</h1>
-
-          <p>
-            The application screen and validation flow are working.
-          </p>
-
-          <p className="meal-app__muted">
-            Drupal submission will be connected after the production page is approved.
-          </p>
-
-          <button
-            type="button"
-            className="meal-app__primary"
-            onClick={() => {
-              setFinished(false);
-              setStep(0);
-            }}
-          >
-            Return to Application
-          </button>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="meal-app">
@@ -774,7 +867,9 @@ function MealApplication() {
             >
               <div className="meal-app__captcha">
                 <div className="meal-app__captcha-question">
-                  7 + 4 = ?
+                  {securityLoading
+                    ? "Loading security question…"
+                    : captchaQuestion || "Security question unavailable"}
                 </div>
 
                 <Field
@@ -790,8 +885,8 @@ function MealApplication() {
               </div>
 
               <p className="meal-app__note">
-                The live Drupal math question will replace this
-                placeholder when we connect the production submission.
+                This security question comes directly from the Meals on Wheels
+                registration form.
               </p>
             </QuestionFrame>
           )}
@@ -892,9 +987,8 @@ function MealApplication() {
                 </strong>
 
                 <p>
-                  When live submission is connected, this application
-                  will be sent securely to the existing Meals on
-                  Wheels Drupal registration workflow.
+                  When you submit, this application will be sent securely to
+                  the existing Meals on Wheels Drupal registration workflow.
                 </p>
               </div>
             </QuestionFrame>
@@ -916,9 +1010,10 @@ function MealApplication() {
               type="button"
               className="meal-app__primary"
               onClick={submitApplication}
+              disabled={submitting}
             >
-              Submit Application
-              <span>→</span>
+              {submitting ? "Submitting…" : "Submit Application"}
+              {!submitting && <span>→</span>}
             </button>
           ) : (
             <button
