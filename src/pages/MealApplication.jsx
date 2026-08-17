@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import "./MealApplication.css";
 import welcomeHouse from "../assets/meal-application-welcome-house.png";
 
+const MEAL_REGISTRATION_FUNCTION =
+  "https://meals-on-wheels-pasco-app.netlify.app/.netlify/functions/meal-registration-test";
+
 const INITIAL_FORM = {
   clientName: "",
   dob: "",
@@ -121,15 +124,23 @@ function MealApplication() {
       setError("");
 
       try {
-        const response = await fetch("/.netlify/functions/meal-registration-test", {
+        const response = await fetch(MEAL_REGISTRATION_FUNCTION, {
           method: "GET",
           headers: {
             Accept: "application/json",
           },
-          cache: "no-store",
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data;
+
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            "The security service returned an unexpected response. Please try again."
+          );
+        }
 
         if (!response.ok || !data.ok) {
           throw new Error(
@@ -445,7 +456,7 @@ function MealApplication() {
     setError("");
 
     try {
-      const response = await fetch("/.netlify/functions/meal-registration-test", {
+      const response = await fetch(MEAL_REGISTRATION_FUNCTION, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -460,7 +471,16 @@ function MealApplication() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          "The application service returned an unexpected response. Please try again."
+        );
+      }
 
       if (response.ok && data.ok && data.stage === "meal-application-submitted") {
         navigate("/meal-application-confirmation", { replace: true });
