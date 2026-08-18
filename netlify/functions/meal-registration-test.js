@@ -5,6 +5,8 @@ export async function handler(event) {
   try {
     // =======================================================
     // GET — load fresh Drupal form + CAPTCHA
+    // This is the same proven loading flow used by the
+    // successful final conditional Drupal test.
     // =======================================================
 
     if (!event.httpMethod || event.httpMethod === "GET") {
@@ -12,7 +14,7 @@ export async function handler(event) {
         method: "GET",
         headers: {
           Accept: "text/html",
-          "User-Agent": "MOW-Pasco-App-Final-Conditional-Test",
+          "User-Agent": "MOW-Pasco-App-Meal-Application",
         },
         redirect: "follow",
       });
@@ -22,7 +24,7 @@ export async function handler(event) {
       if (!formResponse.ok) {
         return jsonResponse(502, {
           ok: false,
-          stage: "load-final-conditional-test",
+          stage: "load-meal-application",
           drupalStatus: formResponse.status,
           message:
             "Netlify could not load the Meal Delivery Registration form.",
@@ -62,7 +64,7 @@ export async function handler(event) {
       ) {
         return jsonResponse(502, {
           ok: false,
-          stage: "prepare-final-conditional-test",
+          stage: "prepare-meal-application",
 
           found: {
             form_build_id: Boolean(formBuildId),
@@ -74,14 +76,14 @@ export async function handler(event) {
           },
 
           message:
-            "Drupal loaded, but one or more values required for the final conditional test could not be read.",
+            "Drupal loaded, but one or more values required for the Meal Application could not be read.",
         });
       }
 
       return jsonResponse(200, {
         ok: true,
 
-        stage: "final-conditional-test-ready",
+        stage: "meal-application-ready",
 
         captcha: {
           question: captchaQuestion,
@@ -97,12 +99,15 @@ export async function handler(event) {
         },
 
         message:
-          "Final conditional test is ready. Answer the CAPTCHA and provide a signature before submitting.",
+          "Meal Application is ready. Answer the CAPTCHA and provide a signature before submitting.",
       });
     }
 
     // =======================================================
-    // POST — submit complete TEST record with 2 members
+    // POST — submit the REAL Meal Application
+    // Uses the same proven Drupal submission flow as the
+    // successful conditional test, but replaces hard-coded
+    // TEST values with the values entered in the app.
     // =======================================================
 
     if (event.httpMethod === "POST") {
@@ -114,18 +119,28 @@ export async function handler(event) {
       } catch {
         return jsonResponse(400, {
           ok: false,
-          stage: "read-final-conditional-request",
+          stage: "read-meal-application-request",
           message:
-            "The final conditional test request was not valid JSON.",
+            "The Meal Application request was not valid JSON.",
         });
       }
 
       const {
+        application,
         captchaResponse,
         captchaResponseField,
         signature,
         state,
       } = requestData;
+
+      if (!application) {
+        return jsonResponse(400, {
+          ok: false,
+          stage: "validate-meal-application",
+          message:
+            "The application information is missing.",
+        });
+      }
 
       if (
         !captchaResponse ||
@@ -137,7 +152,7 @@ export async function handler(event) {
       ) {
         return jsonResponse(400, {
           ok: false,
-          stage: "validate-final-conditional-input",
+          stage: "validate-meal-application-input",
           message:
             "CAPTCHA answer, signature, or Drupal form state is missing.",
         });
@@ -150,7 +165,7 @@ export async function handler(event) {
       ) {
         return jsonResponse(400, {
           ok: false,
-          stage: "validate-final-conditional-signature",
+          stage: "validate-meal-application-signature",
           message:
             "The signature is not in the PNG data URL format Drupal expects.",
         });
@@ -160,76 +175,78 @@ export async function handler(event) {
         new URLSearchParams();
 
       // =====================================================
-      // PRIMARY CLIENT — TEST
+      // PRIMARY CLIENT
       // =======================================================
 
       formData.set(
         "client_name",
-        "TEST - MOW APP CONDITIONAL"
+        clean(application.clientName)
       );
 
       formData.set(
         "dob",
-        "1945-01-15"
+        toDrupalDate(application.dob)
       );
 
       formData.set(
         "address",
-        "123 TEST STREET"
+        clean(application.address)
       );
 
       formData.set(
         "mobile_home_park_subdivision",
-        "TEST COMMUNITY"
+        clean(
+          application.mobileHomeParkSubdivision
+        )
       );
 
       formData.set(
         "city",
-        "TEST CITY"
+        clean(application.city)
       );
 
       formData.set(
         "state",
-        "Florida"
+        normalizeState(application.state)
       );
 
       formData.set(
         "zip_code",
-        "33542"
+        clean(application.zipCode)
       );
 
       formData.set(
         "primary_contact_phone",
-        "813-555-0100"
+        clean(application.primaryPhone)
       );
 
       formData.set(
         "email",
-        `mow-app-conditional-test-${Date.now()}@example.com`
+        clean(application.email)
       );
 
       // =====================================================
-      // EMERGENCY CONTACT — TEST
+      // EMERGENCY CONTACT
       // =======================================================
 
       formData.set(
         "emergency_contact",
-        "TEST EMERGENCY CONTACT"
+        clean(application.emergencyContact)
       );
 
       formData.set(
         "relationship",
-        "TEST FRIEND"
+        clean(application.relationship)
       );
 
       formData.set(
         "home_mobile_phone_",
-        "813-555-0101"
+        clean(application.emergencyPhone)
       );
 
       formData.set(
         "email_ec",
-        "test-emergency-contact@example.com"
+        clean(application.emergencyEmail)
       );
 
       // =====================================================
@@ -238,22 +255,22 @@ export async function handler(event) {
 
       formData.set(
         "are_you_a_diabetic_",
-        "No"
+        clean(application.diabetic)
       );
 
       formData.set(
         "are_you_allergic_to_nuts_",
-        "No"
+        clean(application.allergicNuts)
       );
 
       formData.set(
         "are_you_allergic_to_seafood_",
-        "No"
+        clean(application.allergicSeafood)
       );
 
       formData.set(
         "are_you_a_veteran_1",
-        "No"
+        clean(application.veteran)
       );
 
       // =====================================================
@@ -262,13 +279,22 @@ export async function handler(event) {
 
       formData.set(
         "do_you_own_a_pet_2",
-        "Yes"
+        clean(application.ownPet)
       );
 
-      formData.append(
-        "what_pet_s_do_you_own_[Dog]",
-        "Dog"
-      );
+      if (
+        application.ownPet === "Yes" &&
+        Array.isArray(application.pets)
+      ) {
+        for (const pet of application.pets) {
+          if (pet === "Dog" || pet === "Cat") {
+            formData.append(
+              `what_pet_s_do_you_own_[${pet}]`,
+              pet
+            );
+          }
+        }
+      }
 
       // =====================================================
       // PRIMARY MEDICAL COMMENTS
@@ -276,7 +302,7 @@ export async function handler(event) {
 
       formData.set(
         "are_there_any_other_medical_restrictions_or_conditions_we_should_be_aware_of_",
-        "TEST SUBMISSION - FINAL CONDITIONAL INTEGRATION TEST."
+        clean(application.medicalRestrictions)
       );
 
       // =====================================================
@@ -285,91 +311,110 @@ export async function handler(event) {
 
       formData.set(
         "would_anyone_else_in_your_home_like_to_be_included_in_this_meal_",
-        "Yes"
+        clean(application.additionalMealService)
       );
 
-      formData.set(
-        "number_of_additional_people_in_home_requiring_meal_service",
-        "2"
-      );
+      if (
+        application.additionalMealService === "Yes"
+      ) {
+        formData.set(
+          "number_of_additional_people_in_home_requiring_meal_service",
+          clean(application.additionalPeople)
+        );
 
-      // =====================================================
-      // HOUSEHOLD MEMBER #1 — TEST
-      // =======================================================
+        // ===================================================
+        // HOUSEHOLD MEMBER #1
+        // ===================================================
 
-      formData.set(
-        "client_name_add_1",
-        "TEST HOUSEHOLD MEMBER 1"
-      );
+        if (
+          application.additionalPeople === "1" ||
+          application.additionalPeople === "2"
+        ) {
+          const member1 =
+            application.member1 || {};
 
-      formData.set(
-        "dob_add_1",
-        "1948-02-20"
-      );
+          formData.set(
+            "client_name_add_1",
+            clean(member1.name)
+          );
 
-      formData.set(
-        "diabetic_add_1",
-        "No"
-      );
+          formData.set(
+            "dob_add_1",
+            toDrupalDate(member1.dob)
+          );
 
-      formData.set(
-        "are_you_allergic_nuts_add_1",
-        "No"
-      );
+          formData.set(
+            "diabetic_add_1",
+            clean(member1.diabetic)
+          );
 
-      formData.set(
-        "are_you_allergic_to_seafood_add_1",
-        "No"
-      );
+          formData.set(
+            "are_you_allergic_nuts_add_1",
+            clean(member1.allergicNuts)
+          );
 
-      formData.set(
-        "are_you_a_veteran_",
-        "No"
-      );
+          formData.set(
+            "are_you_allergic_to_seafood_add_1",
+            clean(member1.allergicSeafood)
+          );
 
-      formData.set(
-        "medical_restrictions_or_conditions_we_should_add_1",
-        "TEST HOUSEHOLD MEMBER 1 - NO ACTUAL MEDICAL RESTRICTIONS."
-      );
+          formData.set(
+            "are_you_a_veteran_",
+            clean(member1.veteran)
+          );
 
-      // =====================================================
-      // HOUSEHOLD MEMBER #2 — TEST
-      // =======================================================
+          formData.set(
+            "medical_restrictions_or_conditions_we_should_add_1",
+            clean(member1.medicalRestrictions)
+          );
+        }
 
-      formData.set(
-        "client_name_add_2",
-        "TEST HOUSEHOLD MEMBER 2"
-      );
+        // ===================================================
+        // HOUSEHOLD MEMBER #2
+        // ===================================================
 
-      formData.set(
-        "dob_add_2",
-        "1950-03-25"
-      );
+        if (
+          application.additionalPeople === "2"
+        ) {
+          const member2 =
+            application.member2 || {};
 
-      formData.set(
-        "are_you_a_diabetic_add_2",
-        "No"
-      );
+          formData.set(
+            "client_name_add_2",
+            clean(member2.name)
+          );
 
-      formData.set(
-        "are_you_allergic_to_nuts_add_2",
-        "No"
-      );
+          formData.set(
+            "dob_add_2",
+            toDrupalDate(member2.dob)
+          );
 
-      formData.set(
-        "are_you_allergic_to_seafood_add_2",
-        "No"
-      );
+          formData.set(
+            "are_you_a_diabetic_add_2",
+            clean(member2.diabetic)
+          );
 
-      formData.set(
-        "are_you_a_veteran_2",
-        "No"
-      );
+          formData.set(
+            "are_you_allergic_to_nuts_add_2",
+            clean(member2.allergicNuts)
+          );
 
-      formData.set(
-        "medical_restrictions_or_conditions_we_should_add_2",
-        "TEST HOUSEHOLD MEMBER 2 - NO ACTUAL MEDICAL RESTRICTIONS."
-      );
+          formData.set(
+            "are_you_allergic_to_seafood_add_2",
+            clean(member2.allergicSeafood)
+          );
+
+          formData.set(
+            "are_you_a_veteran_2",
+            clean(member2.veteran)
+          );
+
+          formData.set(
+            "medical_restrictions_or_conditions_we_should_add_2",
+            clean(member2.medicalRestrictions)
+          );
+        }
+      }
 
       // =====================================================
       // CAPTCHA
@@ -427,7 +472,7 @@ export async function handler(event) {
       );
 
       // =====================================================
-      // SUBMIT
+      // SUBMIT — same proven Drupal POST pattern
       // =======================================================
 
       const submitResponse =
@@ -441,7 +486,7 @@ export async function handler(event) {
             Accept: "text/html",
 
             "User-Agent":
-              "MOW-Pasco-App-Final-Conditional-Test",
+              "MOW-Pasco-App-Meal-Application",
           },
 
           body:
@@ -478,7 +523,7 @@ export async function handler(event) {
           ok: true,
 
           stage:
-            "final-conditional-test-passed",
+            "meal-application-submitted",
 
           drupalStatus:
             submitResponse.status,
@@ -488,14 +533,8 @@ export async function handler(event) {
           recordExpected:
             true,
 
-          testClientName:
-            "TEST - MOW APP CONDITIONAL",
-
-          additionalMembers:
-            2,
-
           message:
-            "SUCCESS — Drupal accepted the final conditional TEST with two additional household members.",
+            "SUCCESS — Drupal accepted the Meal Delivery Application.",
         });
       }
 
@@ -507,7 +546,7 @@ export async function handler(event) {
         ok: false,
 
         stage:
-          "final-conditional-test",
+          "meal-application-validation",
 
         drupalStatus:
           submitResponse.status,
@@ -519,7 +558,7 @@ export async function handler(event) {
         diagnosticText,
 
         message:
-          "Drupal processed the final conditional TEST but did not reach confirmation. Review diagnosticText for the remaining validation issue.",
+          "Drupal processed the Meal Application but did not reach confirmation. Review diagnosticText for the remaining validation issue.",
       });
     }
 
@@ -533,7 +572,7 @@ export async function handler(event) {
       ok: false,
 
       stage:
-        "final-conditional-test",
+        "meal-application",
 
       message:
         error instanceof Error
@@ -541,6 +580,82 @@ export async function handler(event) {
           : "Unknown server-side error.",
     });
   }
+}
+
+
+// =========================================================
+// Normalize simple string values
+// =========================================================
+
+function clean(value) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "";
+  }
+
+  return String(value).trim();
+}
+
+
+// =========================================================
+// Convert app MM/DD/YYYY date to Drupal YYYY-MM-DD
+// =========================================================
+
+function toDrupalDate(value) {
+  const input =
+    clean(value);
+
+  if (!input) {
+    return "";
+  }
+
+  // Already in Drupal/HTML date format.
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(input)
+  ) {
+    return input;
+  }
+
+  const match =
+    input.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    );
+
+  if (!match) {
+    return input;
+  }
+
+  const month =
+    match[1].padStart(2, "0");
+
+  const day =
+    match[2].padStart(2, "0");
+
+  const year =
+    match[3];
+
+  return `${year}-${month}-${day}`;
+}
+
+
+// =========================================================
+// Drupal test proved the state field accepts "Florida".
+// Keep the app display as FL but translate it for Drupal.
+// =========================================================
+
+function normalizeState(value) {
+  const state =
+    clean(value);
+
+  if (
+    state.toUpperCase() === "FL"
+  ) {
+    return "Florida";
+  }
+
+  return state;
 }
 
 
