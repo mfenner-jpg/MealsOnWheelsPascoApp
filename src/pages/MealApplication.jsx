@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./MealApplication.css";
 import welcomeHouse from "../assets/meal-application-welcome-house.png";
@@ -162,18 +162,6 @@ function MealApplication() {
     }
   };
 
-  useEffect(() => {
-    if (
-      current.id === "verification" &&
-      !captchaState &&
-      !securityLoading
-    ) {
-      loadSecurityQuestion();
-    }
-    // Intentionally trigger when the user reaches the verification step.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current.id]);
-
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
@@ -324,7 +312,7 @@ function MealApplication() {
     return "";
   };
 
-  const next = () => {
+  const next = async () => {
     const message = validateCurrentStep();
 
     if (message) {
@@ -335,6 +323,16 @@ function MealApplication() {
     setError("");
 
     if (step < steps.length - 1) {
+      const nextStep = steps[step + 1];
+
+      if (
+        nextStep?.id === "verification" &&
+        !captchaState &&
+        !securityLoading
+      ) {
+        await loadSecurityQuestion();
+      }
+
       setStep((value) => value + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
