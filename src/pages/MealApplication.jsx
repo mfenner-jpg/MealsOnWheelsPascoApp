@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import "./MealApplication.css";
 import welcomeHouse from "../assets/meal-application-welcome-house.png";
 
-const MEAL_REGISTRATION_FUNCTION =
-  "https://meals-on-wheels-pasco-app.netlify.app/.netlify/functions/meal-registration-test";
-
 const INITIAL_FORM = {
   clientName: "",
   dob: "",
@@ -56,12 +53,14 @@ function MealApplication() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [captchaQuestion, setCaptchaQuestion] = useState("");
-  const [captchaResponseField, setCaptchaResponseField] = useState("captcha_response");
-  const [drupalState, setDrupalState] = useState(null);
+  const [captchaResponseField, setCaptchaResponseField] =
+    useState("captcha_response");
+  const [captchaState, setCaptchaState] = useState(null);
   const [securityLoading, setSecurityLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
+
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef(null);
@@ -112,71 +111,68 @@ function MealApplication() {
   const current = steps[step] || steps[0];
   const progress = Math.max(4, Math.round(((step + 1) / steps.length) * 100));
 
-  useEffect(() => {
-    if (current.id !== "verification" || drupalState) {
-      return;
-    }
+  const loadSecurityQuestion = async () => {
+    setSecurityLoading(true);
+    setError("");
 
-    let cancelled = false;
+    setCaptchaQuestion("");
+    setCaptchaResponseField("captcha_response");
+    setCaptchaState(null);
 
-    const loadSecurityQuestion = async () => {
-      setSecurityLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(MEAL_REGISTRATION_FUNCTION, {
+    try {
+      const response = await fetch(
+        "/.netlify/functions/meal-registration-test",
+        {
           method: "GET",
           headers: {
             Accept: "application/json",
           },
-        });
+        }
+      );
 
-        const responseText = await response.text();
-        let data;
+      const data = await response.json();
 
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          throw new Error(
-            "The security service returned an unexpected response. Please try again."
-          );
-        }
+      if (
+        response.ok &&
+        data.ok &&
+        data.stage === "meal-application-ready"
+      ) {
+        setCaptchaQuestion(data.captcha?.question || "");
+        setCaptchaState(data.state || null);
 
-        if (!response.ok || !data.ok) {
-          throw new Error(
-            data.message ||
-              "We could not prepare the security question. Please try again."
-          );
-        }
+        setCaptchaResponseField(
+          data.captcha?.responseField || "captcha_response"
+        );
 
-        if (!cancelled) {
-          setCaptchaQuestion(data.captcha?.question || "");
-          setCaptchaResponseField(
-            data.captcha?.responseField || "captcha_response"
-          );
-          setDrupalState(data.state || null);
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "We could not prepare the security question. Please try again."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setSecurityLoading(false);
-        }
+        setError("");
+      } else {
+        setError(
+          data.message ||
+            `The security service returned HTTP ${response.status}.`
+        );
       }
-    };
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "The security question could not be loaded."
+      );
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
 
-    loadSecurityQuestion();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [current.id, drupalState]);
+  useEffect(() => {
+    if (
+      current.id === "verification" &&
+      !captchaState &&
+      !securityLoading
+    ) {
+      loadSecurityQuestion();
+    }
+    // Intentionally trigger when the user reaches the verification step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.id]);
 
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -312,8 +308,8 @@ function MealApplication() {
         return "Please wait while the security question loads.";
       }
 
-      if (!captchaQuestion || !drupalState) {
-        return "The security question could not be prepared. Please try again.";
+      if (!captchaQuestion || !captchaState) {
+        return "Please load the security question before continuing.";
       }
 
       if (!form.captchaAnswer.trim()) {
@@ -440,9 +436,9 @@ function MealApplication() {
   const submitApplication = async () => {
     if (submitting) return;
 
-    if (!drupalState || !captchaQuestion) {
+    if (!captchaState || !captchaQuestion) {
       setError(
-        "The security verification is no longer ready. Please return to the verification step and try again."
+        "The security verification is not ready. Please return to the verification step and load a fresh question."
       );
       return;
     }
@@ -456,48 +452,48 @@ function MealApplication() {
     setError("");
 
     try {
-      const response = await fetch(MEAL_REGISTRATION_FUNCTION, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          application: form,
-          captchaResponse: form.captchaAnswer,
-          captchaResponseField,
-          signature: form.signatureData,
-          state: drupalState,
-        }),
-      });
+      const response = await fetch(
+        "/.netlify/functions/meal-registration-test",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            application: form,
+            captchaResponse: form.captchaAnswer.trim(),
+            captchaResponseField,
+            signature: form.signatureData,
+            state: captchaState,
+          }),
+        }
+      );
 
-      const responseText = await response.text();
-      let data;
+      const data = await response.json();
 
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        throw new Error(
-          "The application service returned an unexpected response. Please try again."
+      if (
+        response.ok &&
+        data.ok &&
+        data.stage === "meal-application-submitted"
+      ) {
+        navigate(
+          "/meal-application-confirmation",
+          { replace: true }
         );
-      }
-
-      if (response.ok && data.ok && data.stage === "meal-application-submitted") {
-        navigate("/meal-application-confirmation", { replace: true });
         return;
       }
 
-      throw new Error(
+      setError(
         data.message ||
-          "Drupal could not accept the application. Please review the form and try again."
+          `The application service returned HTTP ${response.status}.`
       );
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "We could not submit the application. Please try again."
+          : "The application could not be submitted."
       );
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSubmitting(false);
     }
@@ -889,7 +885,8 @@ function MealApplication() {
                 <div className="meal-app__captcha-question">
                   {securityLoading
                     ? "Loading security question…"
-                    : captchaQuestion || "Security question unavailable"}
+                    : captchaQuestion ||
+                      "Security question unavailable"}
                 </div>
 
                 <Field
@@ -908,6 +905,16 @@ function MealApplication() {
                 This security question comes directly from the Meals on Wheels
                 registration form.
               </p>
+
+              {!securityLoading && !captchaQuestion && (
+                <button
+                  type="button"
+                  className="meal-app__back-link"
+                  onClick={loadSecurityQuestion}
+                >
+                  Try Again
+                </button>
+              )}
             </QuestionFrame>
           )}
 
@@ -1007,8 +1014,8 @@ function MealApplication() {
                 </strong>
 
                 <p>
-                  When you submit, this application will be sent securely to
-                  the existing Meals on Wheels Drupal registration workflow.
+                  When you submit, this application will be sent securely
+                  to the existing Meals on Wheels Drupal registration workflow.
                 </p>
               </div>
             </QuestionFrame>
