@@ -540,13 +540,7 @@ export async function handler(event) {
 
       // =====================================================
       // DIAGNOSTIC
-      // TEMPORARY: write Drupal's returned validation text
-      // to the Netlify Function log so we can identify the
-      // exact field Drupal is rejecting.
-      // Remove this console.log after the issue is fixed.
       // =======================================================
-
-      console.log("DRUPAL DIAGNOSTIC:", diagnosticText);
 
       return jsonResponse(422, {
         ok: false,
