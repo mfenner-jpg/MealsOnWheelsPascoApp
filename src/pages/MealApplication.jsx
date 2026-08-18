@@ -58,6 +58,7 @@ function MealApplication() {
   const [captchaState, setCaptchaState] = useState(null);
   const [securityLoading, setSecurityLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [diagnosticText, setDiagnosticText] = useState("");
 
   const navigate = useNavigate();
 
@@ -165,6 +166,7 @@ function MealApplication() {
   const update = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
+    setDiagnosticText("");
   };
 
   const updateMember = (memberKey, field, value) => {
@@ -448,6 +450,7 @@ function MealApplication() {
 
     setSubmitting(true);
     setError("");
+    setDiagnosticText("");
 
     try {
       const response = await fetch(
@@ -482,11 +485,15 @@ function MealApplication() {
         return;
       }
 
+      setDiagnosticText(data.diagnosticText || "");
+
       setError(
         data.message ||
           `The application service returned HTTP ${response.status}.`
       );
     } catch (submitError) {
+      setDiagnosticText("");
+
       setError(
         submitError instanceof Error
           ? submitError.message
@@ -1025,6 +1032,35 @@ function MealApplication() {
               role="alert"
             >
               {error}
+            </div>
+          )}
+
+          {diagnosticText && (
+            <div
+              style={{
+                marginTop: "14px",
+                padding: "14px",
+                borderRadius: "10px",
+                background: "#fff7dd",
+                border: "1px solid #e2c46d",
+                color: "#4b3d18",
+                fontSize: "12px",
+                lineHeight: 1.5,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              <strong
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  color: "#073665",
+                }}
+              >
+                Temporary Drupal Diagnostic
+              </strong>
+
+              {diagnosticText}
             </div>
           )}
         </div>
